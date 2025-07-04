@@ -49,3 +49,14 @@ class TypePortefeuille(Base):
     idtypeportefeuille = Column(Integer, primary_key=True, index=True)
     nomtypeportefeuille = Column(String(50), nullable=False)
     fraisfiscauxtypeportefeuille = Column(DECIMAL, nullable=False)
+
+
+class Transaction(Base):
+    __tablename__ = "transaction"
+
+    idtransaction = Column(Integer, primary_key=True, index=True)
+    datetransaction = Column(Date, nullable=False)
+    typetransaction = Column(String(10), nullable=False)
+    quantitetransaction = Column(Integer, nullable=False)
+    prixtransaction = Column(DECIMAL, nullable=False)
+    idaction = Column(Integer, ForeignKey("action.idaction"), nullable=False)

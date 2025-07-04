@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, create_engine
 from database import SessionLocal, engine, Base
-from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme
+from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Transaction
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import date
@@ -143,7 +143,6 @@ def get_actions(db: Session = Depends(get_db)):
         {
             "idaction": a.idaction,
             "idportefeuille": a.idportefeuille,
-            "idplateforme": a.idplateforme,
             "nomaction": a.nomaction,
             "symbol": a.symbol,
             "quantiteaction":a.quantiteaction, 
@@ -222,7 +221,7 @@ def ajout_action(data: ActionInput, db: Session = Depends(get_db)):
         p_new = float(data.prixachataction)
 
         # Calculer la moyenne des actions pour pouvoir les cumuler
-        q_total = q_old + p_new
+        q_total = q_old + q_new
         p_moyen = ((p_old*q_old) + (p_new*q_new))/q_total
 
         action_existante.quantiteaction = q_total
@@ -322,6 +321,47 @@ def get_plateforme(db: Session = Depends(get_db)):
             "fraispercent":float(p.fraispercent)
         } 
         for p in plateforme]
+
+#===================================================
+#=====================TRANSACTION===================
+#===================================================
+@app.get("/transaction")
+def get_transaction(db: Session = Depends(get_db)):
+    transaction = db.query(Transaction).all()
+    return [
+        {
+            "idtransaction":t.idtransaction,
+            "datetransaction":t.datetransaction,
+            "typetransaction":t.typetransaction,
+            "quantitetransaction":t.quantitetransaction,
+            "prixtransaction":float(t.prixtransaction),
+            "idaction":t.idaction,
+        } 
+        for t in transaction]
+
+
+#====Ajout Transaction=====
+class TransactionInput(BaseModel):
+    datetransaction: date
+    typetransaction: str
+    quantitetransaction: int
+    prixtransaction: float
+    idaction: int
+
+@app.post("/transaction")
+def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
+    nouvelleTransaction = Transaction(
+        datetransaction=data.datetransaction,
+        typetransaction=data.typetransaction,
+        quantitetransaction=data.quantitetransaction,
+        prixtransaction=data.prixtransaction,
+        idaction=data.idaction
+    )
+    db.add(nouvelleTransaction)
+    db.commit()
+    db.refresh(nouvelleTransaction)
+    return{"message":"Transaction ajouté", "id":nouvelleTransaction.idtransaction}
+
 
 
 #====================================================
