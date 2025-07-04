@@ -7,6 +7,7 @@ from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Platefor
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import date
+import yfinance as yf
 import os
 
 
@@ -361,6 +362,21 @@ def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(nouvelleTransaction)
     return{"message":"Transaction ajouté", "id":nouvelleTransaction.idtransaction}
+
+
+#=======================================================
+#=====================COTATION ACTION===================
+#=======================================================
+
+@app.get("/quote/{symbol}")
+def get_cotation_actuelle(symbol: str):
+    try:
+        stock = yf.Ticker(symbol)
+        historique = stock.history(period="1d")
+        dernier_prix = historique["Close"].iloc[-1]
+        return {"symbol": symbol, "prix": round(float(dernier_prix), 2)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur récuperation de prix : {str(e)}")
 
 
 
