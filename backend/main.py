@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Request, status, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy.orm import Session, sessionmaker, declarative_base
+from sqlalchemy import and_, create_engine
 from database import SessionLocal, engine
 from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Base
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +13,14 @@ import os
 #=============================================
 #=================PARAMETRAGE=================
 #=============================================
+
+# Utilise DATABASE_URL si elle existe (Render), sinon sqlite en local
+DATABASE_URL = os.environ.get("DATABASE_URL") or "sqlite:///./test.db"
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+
+Base = declarative_base()
 
 # Créer les tables si elles n'existent pas
 Base.metadata.create_all(bind=engine)
