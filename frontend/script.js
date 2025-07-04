@@ -1,3 +1,8 @@
+const API_URL = 
+  window.location.hostname === "localhost"
+    ? "http://localhost:8000"
+    : "https://wallbourse-backend.onrender.com"
+
 // I.
 // -----------------------------
 // ----------- LOGIN -----------
@@ -19,7 +24,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   const prenom = e.target.prenom.value;
 
   // mettre les donné entré en JSON
-  const res = await fetch("http://localhost:8000/login",{
+  const res = await fetch(`${API_URL}/login`,{
     method:"POST",
     headers: { "Content-Type":"application/json"},
     body: JSON.stringify({ nomutilisateur: nom, prenomutilisateur: prenom })
@@ -57,7 +62,7 @@ async function afficherUtilisateur() {
   const userid = localStorage.getItem("userId");
   if(!userid) return;
 
-  const res = await fetch(`http://localhost:8000/utilisateur/${userid}`);
+  const res = await fetch(`${API_URL}/utilisateur/${userid}`);
   const data = await res.json();
 
   console.log(data)
@@ -79,7 +84,7 @@ async function afficherPortefeuilles() {
   const userid = localStorage.getItem("userId");
   if(!userid) return;
 
-  const res = await fetch(`http://localhost:8000/utilisateur/${userid}/portefeuilles`);
+  const res = await fetch(`${API_URL}/utilisateur/${userid}/portefeuilles`);
   const data = await res.json() 
 
   //---Liste déroulante---
@@ -127,7 +132,7 @@ async function afficherPortefeuilles() {
 const tbody = document.querySelector(".tableAction tbody")
 
 async function afficherActions(idportefeuille){
-  const res = await fetch(`http://localhost:8000/portefeuille/${idportefeuille}/actions`);
+  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/actions`);
   const data = await res.json()
 
   //---Prix total---
@@ -171,7 +176,7 @@ async function afficherActions(idportefeuille){
 
 
 async function afficherToutesLesActions(iduser){
-  const res = await fetch(`http://localhost:8000/utilisateur/${iduser}/actions`);
+  const res = await fetch(`${API_URL}/utilisateur/${iduser}/actions`);
   const data = await res.json()
 
   //---Prix total---
@@ -248,7 +253,7 @@ formAjoutPortefeuille.addEventListener("submit", async function (e) {
 
   const iduser = localStorage.getItem("userId");
   
-  const res = await fetch("http://localhost:8000/portefeuille", {
+  const res = await fetch(`${API_URL}/portefeuille`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -274,7 +279,7 @@ formAjoutPortefeuille.addEventListener("submit", async function (e) {
 // ---- Recuperation type & plateforme ----
 async function chargerOption() {
   // Type portefeuille
-  const resType = await fetch(`http://localhost:8000/type-portefeuille`);
+  const resType = await fetch(`${API_URL}/type-portefeuille`);
   const dataType = await resType.json() 
 
   let selectTypePortefeuille = document.getElementById("selectTypePortefeuille");
@@ -288,7 +293,7 @@ async function chargerOption() {
   });
 
   // Plateforme
-  const resPlateforme = await fetch(`http://localhost:8000/plateforme`);
+  const resPlateforme = await fetch(`${API_URL}/plateforme`);
   const dataPlateforme = await resPlateforme.json() 
 
   let selectPlateforme = document.getElementById("selectPlateforme");
@@ -318,7 +323,7 @@ suppressionPortefeuille.addEventListener("click", async () => {
   const confirmation = confirm("Voulez-vous vraiment supprimer ce portefeuille ?")
   if(!confirmation) return;
 
-  const res = await fetch(`http://localhost:8000/portefeuille/${id}`, {
+  const res = await fetch(`${API_URL}/portefeuille/${id}`, {
     method: "DELETE"
   });
 
@@ -339,7 +344,7 @@ suppressionPortefeuille.addEventListener("click", async () => {
 async function chargerListePortefeuille(nomIdSelectPortefeuille) {
   let iduser = localStorage.getItem("userId");
 
-  const res = await fetch(`http://localhost:8000/utilisateur/${iduser}/portefeuilles`);
+  const res = await fetch(`${API_URL}/utilisateur/${iduser}/portefeuilles`);
   const data = await res.json() 
 
   let selectPortefeuilleAction = document.getElementById(nomIdSelectPortefeuille);
@@ -391,7 +396,7 @@ formAchatAction.addEventListener("submit", async function (e) {
   let idportefeuilleValue = parseInt(document.getElementById("selectPortefeuilleActionAchat").value)
   let portefeuilleActifID = localStorage.getItem("portefeuilleActifID")
 
-  const res = await fetch("http://localhost:8000/action", {
+  const res = await fetch(`${API_URL}/action`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -433,7 +438,7 @@ async function chargerActionLierPortefeuille() {
   let choixPortefeuille = document.getElementById("selectPortefeuilleActionVente").value;
   console.log("choixPortefeuille : " + choixPortefeuille)
 
-  const res = await fetch(`http://localhost:8000/portefeuille/${choixPortefeuille}/actions`);
+  const res = await fetch(`${API_URL}/portefeuille/${choixPortefeuille}/actions`);
 
   if(!res.ok){
     alert("Créer d'abord un portefeuille")
@@ -495,7 +500,7 @@ formVenteAction.addEventListener("submit", async function (e) {
   const confirmation = confirm("Voulez-vous vraiment vendre cette action ?")
   if(!confirmation) return;
 
-  const res = await fetch(`http://localhost:8000/action/${idaction}?quantite=${quantite}`, {
+  const res = await fetch(`${API_URL}/action/${idaction}?quantite=${quantite}`, {
     method: "DELETE",
   });
 
