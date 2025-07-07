@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DECIMAL, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, DECIMAL, Date, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -11,6 +11,7 @@ class Utilisateur(Base):
     prenomutilisateur = Column(String(50), nullable=False)
     emailutilisateur = Column(String(80), nullable=False)
     motsdepasseutilisateur = Column(String(50), nullable=False)
+    estadmin = Column(Boolean, nullable=False)
 
 class Portefeuille(Base):
     __tablename__ = "portefeuille"

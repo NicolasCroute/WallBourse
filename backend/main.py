@@ -50,7 +50,9 @@ def get_utilisateurs(db: Session = Depends(get_db)):
             "idutilisateur": u.idutilisateur, 
             "nomutilisateur": u.nomutilisateur, 
             "prenomutilisateur":u.prenomutilisateur, 
-            "emailutilisateur":u.emailutilisateur
+            "emailutilisateur":u.emailutilisateur,
+            "motsdepasseutilisateur":u.motsdepasseutilisateur,
+            "estadmin":u.estadmin
         } 
         for u in utilisateurs]
 
@@ -60,8 +62,10 @@ def get_utilisateur_id(id: int, db: Session = Depends(get_db)):
     return {
         "idutilisateur": utilisateur.idutilisateur, 
         "nomutilisateur": utilisateur.nomutilisateur, 
-        "prenomutilisateur":utilisateur.prenomutilisateur, 
-        "emailutilisateur":utilisateur.emailutilisateur
+        "prenomutilisateur":utilisateur.prenomutilisateur,
+        "emailutilisateur":utilisateur.emailutilisateur,
+        "motsdepasseutilisateur":utilisateur.motsdepasseutilisateur,
+        "estadmin":utilisateur.estadmin,
     }
 
 
@@ -270,28 +274,57 @@ def vendre_action(id: int, quantite: int = Query(..., gt=0), db: Session = Depen
 
 # que pour POST (évite async, ...)
 class LoginData(BaseModel):
-    nomutilisateur: str
-    prenomutilisateur: str
+    emailutilisateur: str
+    motsdepasseutilisateur: str
 
-# Route login
+# Route post login
 @app.post("/login")
 def login(data: LoginData, db: Session = Depends(get_db)):
-    nom = data.nomutilisateur
-    prenom = data.prenomutilisateur
 
     user = db.query(Utilisateur).filter_by(
-        nomutilisateur=nom,
-        prenomutilisateur=prenom 
+        emailutilisateur=data.emailutilisateur,
+        motsdepasseutilisateur=data.motsdepasseutilisateur 
     ).first()
 
     if user:
         return {
             "idUtilisateur":user.idutilisateur,
-            "nom":user.nomutilisateur,
-            "prenom":user.prenomutilisateur
+            "emailutilisateur":user.emailutilisateur,
+            "motsdepasseutilisateur":user.motsdepasseutilisateur
         }
     else:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+
+#===================================================
+#=====================INSCRIPTION===================
+#===================================================
+class InscriptionData(BaseModel):
+    prenomutilisateur: str
+    nomutilisateur: str
+    emailutilisateur: str
+    motsdepasseutilisateur: str
+
+@app.post("/inscription")
+def login(data: InscriptionData, db: Session = Depends(get_db)):
+
+    userExistant = db.query(Utilisateur).filter_by(emailutilisateur=data.emailutilisateur).first()
+
+    if userExistant:
+       raise HTTPException(status_code=400, detail="Email déja utilisé")
+
+    nouvel_utilisateur = Utilisateur(
+        prenomutilisateur=data.prenomutilisateur,
+        nomutilisateur=data.nomutilisateur,
+        emailutilisateur=data.emailutilisateur,
+        motsdepasseutilisateur=data.motsdepasseutilisateur
+    )
+
+    db.add(nouvel_utilisateur)
+    db.commit()
+    db.refresh(nouvel_utilisateur)
+
+    return {"message":"Inscription réussie", "idUtilisateur": nouvel_utilisateur.idutilisateur}
 
 
 #=========================================================

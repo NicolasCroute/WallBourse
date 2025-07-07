@@ -18,16 +18,18 @@ window.onload = () => {
 };
 
 
-document.getElementById("loginForm").onsubmit = async (e) => {
+document.getElementById("formConnexion").onsubmit = async (e) => {
   e.preventDefault();
-  const nom = e.target.nom.value;
-  const prenom = e.target.prenom.value;
 
   // mettre les donné entré en JSON
   const res = await fetch(`${API_URL}/login`,{
     method:"POST",
     headers: { "Content-Type":"application/json"},
-    body: JSON.stringify({ nomutilisateur: nom, prenomutilisateur: prenom })
+    body: JSON.stringify(
+      { 
+        emailutilisateur: e.target.emailutilisateur.value, 
+        motsdepasseutilisateur: e.target.motsdepasseutilisateur.value 
+      })
   });
 
   // Verif si serveur a envoyé du code
@@ -47,6 +49,68 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     alert("Utilisateur non trouvé !")
   }
 }
+
+// -----------------------------------
+// ----------- INSCRIPTION -----------
+// -----------------------------------
+
+const partieConnexion = document.getElementById("partieConnexion");
+const partieInscription = document.getElementById("partieInscription");
+const lienPageInscription = document.getElementById("lienInscription");
+const lienPageConnexion = document.getElementById("lienConnexion");
+const formInscription = document.getElementById("formInscription");
+
+lienPageInscription.addEventListener('click', () =>{
+  partieConnexion.style.display = "none";
+  partieInscription.style.display = "block";
+})
+
+lienPageConnexion.addEventListener('click', () =>{
+  partieInscription.style.display = "none";
+  partieConnexion.style.display = "block";
+})
+
+
+formInscription.addEventListener('submit', async (e) =>{
+  e.preventDefault()
+  
+  const nom = e.target.nomutilisateur.value;
+  const prenom = e.target.prenomutilisateur.value;
+  const email = e.target.emailutilisateur.value;
+  const motsdepasse = e.target.motsdepasseutilisateur.value;
+  
+  const res = await fetch(`${API_URL}/inscription`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      nomutilisateur: nom,
+      prenomutilisateur: prenom,
+      emailutilisateur: email,
+      motsdepasseutilisateur: motsdepasse
+    })
+  });
+
+  if (res.ok){
+    const user = await res.json();
+    localStorage.setItem("userId", user.idUtilisateur);
+
+    console.log("Réponse backend :", user);
+
+    document.getElementById("loginSection").style.display = "none";
+    document.getElementById("mainSection").style.display = "block";
+
+    afficherPortefeuilles()
+    afficherUtilisateur()
+  }
+  else{
+    const err = await res.json();
+    alert("Erreur : " + err.detail)
+  }
+  
+
+})
+
+
 
 // II.
 let deuxiemeSection = document.getElementById("idDeuxiemeSection");

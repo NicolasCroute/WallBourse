@@ -9,12 +9,46 @@
 <body>
   
   <div id="loginSection">
-    <h2>Login</h2>
-    <form id="loginForm">
-      <input type="text" placeholder="Nom" name="nom">
-      <input type="text" placeholder="Prénom" name="prenom">
-      <button type="submit">LOGIN</button>
-    </form>
+    <div class="pageConnexion">
+      <div class="sectionConnexion" id="partieConnexion">
+        <p class="moyenText">Connexion</p>
+        <form id="formConnexion" class="formLogin">
+          <input type="email" placeholder="Email" name="emailutilisateur">
+          <input type="password" placeholder="Mots de passe" name="motsdepasseutilisateur">
+          <button type="submit">LOGIN</button>
+        </form>
+        <div class="sectionChangementLogin" id="sectionLienInscription">
+          <p>Pas de compte ? </p> 
+          <p class="lienChangementLogin" id="lienInscription"> S'inscrire</p>
+        </div>
+      </div>
+
+      <div class="sectionConnexion" id="partieInscription" style="display: none;">
+        <p class="moyenText">Inscription</p>
+        <form id="formInscription" class="formLogin">
+          <input type="text" placeholder="Nom" name="nomutilisateur" required>
+          <input type="text" placeholder="Prénom" name="prenomutilisateur" required>
+          <input type="email" placeholder="Email" name="emailutilisateur" required>
+          <input type="password" placeholder="Mot de passe" name="motsdepasseutilisateur" required>
+          <button type="submit">S'inscrire</button>
+        </form>
+        <div class="sectionChangementLogin" id="sectionLienConnexion">
+          <p>Déjà un compte ? </p>
+          <p class="lienChangementLogin" id="lienConnexion"> Se connecter</p>
+        </div>
+      </div>
+
+      <div class="sectionlogoLogin">
+        <p class="moyenText">WallBourse</p>
+        <div id="imageWallBourse">
+        </div>
+      </div>
+    </div>
+
+    
+
+    
+
   </div>
   
   <div id="mainSection" style="display: none;">

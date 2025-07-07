@@ -12,6 +12,116 @@ body{
   background-position: center;
 }
 
+/*=========LOGIN==============*/
+
+
+.pageConnexion{
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 50% 50%;
+}
+
+
+.sectionConnexion{
+  align-self: center;
+  justify-self: center;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  background-color: white;
+  width: 22vw;
+  padding: 5vw;
+
+  
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.sectionConnexion p{
+  text-align: center;
+  margin-bottom: 2vh;
+}
+
+.formLogin{
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+
+.formLogin input{
+  width: 150px;
+  padding: 10px;
+  border-color: #0099FF;
+}
+
+.formLogin button{
+  width: 100px;
+  padding: 5px;
+  background-color: #0099FF;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+.formLogin button:hover{
+  background-color: #65c1ff;
+}
+
+
+.sectionChangementLogin{
+  font-size: 0.8em;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center; 
+}
+
+.lienChangementLogin{
+  color: #0099FF;
+  cursor: pointer;
+}
+.lienChangementLogin:hover{
+  color: #65c1ff;
+}
+
+.sectionlogoLogin{
+  align-self: center;
+  justify-self: center;
+  margin-right: 10vw;
+}
+
+#imageWallBourse{
+  height: 40vh;
+  width: 40vh;
+  background-image: url('images/logoWallBourse.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  animation: animationLogin 3s ease-in-out infinite;
+}
+
+@keyframes animationLogin {
+  0%, 100% {
+    transform: translateY(20px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+}
+
+.sectionlogoLogin p{
+  text-align: center;
+  animation: animationLogin 3s ease-in-out infinite;
+}
+
+/*==============================*/
+
+
 .premiereSection{
   display: flex;
   flex-wrap: wrap;
@@ -116,7 +226,14 @@ body{
   border: #00000000;
   margin-left: -0.3vw;
   cursor: pointer;
-  width: 20vw;
+}
+
+#ajoutPortefeuille{
+  text-align: center;
+}
+
+#suppressionPortefeuille{
+  text-align: center;
 }
 
 .petitTextValorisation{
