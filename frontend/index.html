@@ -7,6 +7,7 @@
   <link rel="shortcut icon" href="images/logoWallBourse.png" />
 </head>
 <body>
+
   
   <div id="loginSection">
     <div class="pageConnexion">
@@ -45,75 +46,87 @@
       </div>
     </div>
 
-    
-
-    
-
   </div>
   
   <div id="mainSection" style="display: none;">
     <div class="corp">
-        <div class="premiereSection">
-            <div class="overlay">
-                <div class="carte" id="box1">
-                    <p class="petitText" id="nomPrenomUser"></p>
-                    <p class="moyenText">PORTEFEUILLE</p>
-                    <div id="selectionAjoutPortefeuille">
-                      <select name="" class="moyenText" id="listePortefeuilles"></select>
-                      <p class="moyenText" id="ajoutPortefeuille">+</p>
-                      <p class="moyenText" id="suppressionPortefeuille">-</p>
-                    </div>
-                    </select>
-                </div>
-
-                <div class="carte" id="box2">
-                    <p class="petitText">Valorisation</p>
-                    <p class="petitTextValorisation">+123 €</p>
-                    <p class="petitTextValorisation">+8%</p>
-                </div>
-
-                <div class="carte" id="box3">
-                    <p class="petitText">Total</p>
-                    <p class="petitText" id="prixTotal"></p>
-                </div>
-
-                <div class="carte" id="box4">
-                    <p class="petitText">Evolution</p>
-                </div>
-
-                <div class="carte" id="box5">
-                    <p class="petitText">Réalisation de la semaine</p>
-                </div>
-
-                <div class="carte" id="box6">
-                    <p class="petitText">Performance</p>
-                </div>
+      <div class="sectionMenuDeroulant" id="sectionMenuDeroulantId">
+        <div class="accederMenu" id="accederMenuId">
+            <img src="images/menuDeroulant.png" id="imageAccederMenu">
+        </div>
+        <div class="menuDeroulant" id="menuDeroulantId" style="display: none;">
+            <div class="fermerMenuDeroulant"></div>
+            <div class="choixMenu">
+                <p id="btnDashBoard">DashBoard</p>
+                <p>Historique</p>
+                <p>Paramètre</p>
+                <p>Mention Légal</p>
+                <p id="btnDeconnexion">Deconnexion</p>
             </div>
         </div>
+      </div>
+      <div class="premiereSection">
+        <div class="overlay">
+          <div class="carte" id="box1">
+            <p class="petitText" id="nomPrenomUser"></p>
+            <p class="moyenText">PORTEFEUILLE</p>
+            <div id="selectionAjoutPortefeuille">
+              <select name="" class="moyenText" id="listePortefeuilles"></select>
+              <p class="moyenText" id="ajoutPortefeuille">+</p>
+              <p class="moyenText" id="suppressionPortefeuille">-</p>
+            </div>
+            </select>
+          </div>
 
-        <div class="deuxiemeSection" id="idDeuxiemeSection">
-          <h2 id="vosActions">Vos actions</h2>
-          <div id="achatVenteActions">
-            <p class="petitText" id="achatAction">Achat</p>
-            <p class="petitText" id="venteAction">Vente</p>
+          <div class="carte" id="box2">
+            <p class="petitText">Valorisation</p>
+            <p class="petitTextValorisation">+123 €</p>
+            <p class="petitTextValorisation">+8%</p>
           </div>
-          <div id="divTableauAjout">
-            <table class="tableAction">
-              <thead>
-                <tr>
-                  <th>Nom action</th>
-                  <th>Quantité</th>
-                  <th>Prix Achat</th>
-                  <th>Gain/jour (€)</th>
-                  <th>Gain/jour (%)</th>
-                  <th>Gain/total (€)</th>
-                  <th>Gain/total (%)</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+
+          <div class="carte" id="box3">
+            <p class="petitText">Total</p>
+            <p class="petitText" id="prixTotal"></p>
           </div>
+
+          <div class="carte" id="box4">
+            <p class="petitText">Evolution</p>
+          </div>
+
+          <div class="carte" id="box5">
+            <p class="petitText">Réalisation de la semaine</p>
+          </div>
+          
+          <div class="carte" id="box6">
+            <p class="petitText">Performance</p>
+          </div>
+
         </div>
+      </div>
+
+      <div class="deuxiemeSection" id="idDeuxiemeSection">
+        <h2 id="vosActions">Vos actions</h2>
+        <div id="achatVenteActions">
+          <p class="petitText" id="achatAction">Achat</p>
+          <p class="petitText" id="venteAction">Vente</p>
+        </div>
+        <div id="divTableauAjout">
+          <table class="tableAction">
+            <thead>
+              <tr>
+                <th>Nom action</th>
+                <th>Quantité</th>
+                <th>Prix Achat</th>
+                <th>Gain/jour (€)</th>
+                <th>Gain/jour (%)</th>
+                <th>Gain/total (€)</th>
+                <th>Gain/total (%)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -146,8 +159,10 @@
           <select id="selectPortefeuilleActionAchat" required>
           </select>
         </div>
-        <input type="text" name="nomAction" placeholder="Nom action" required>
-        <input type="text" name="symbolAction" placeholder="Symbole (ex. AAPL)" required>
+        <input list="listeActions" id="nomAction" placeholder="Nom action" required>
+        <datalist id="listeActions"></datalist>
+
+        <input type="text" name="symbolAction" id="symbolAction" placeholder="Symbole (ex. AAPL)" readonly>
         <input type="number" name="quantiteAction" placeholder="Quantité action" required>
         <input type="date" name="dateAchatAction" placeholder="Date achat action" required>
         <input type="number" name="montantInitAction" placeholder="Prix initial action (€)" required>

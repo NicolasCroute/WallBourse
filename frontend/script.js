@@ -110,9 +110,56 @@ formInscription.addEventListener('submit', async (e) =>{
 
 })
 
-
-
 // II.
+// --------------------------------------
+// ----------- MENU DEROULANT -----------
+// --------------------------------------
+
+let accederMenu = document.getElementById("accederMenuId");
+let menuDeroulantId = document.getElementById("menuDeroulantId");
+let sectionMenuDeroulant = document.getElementById("sectionMenuDeroulantId");
+let choixMenu = document.querySelectorAll(".choixMenu p");
+
+
+sectionMenuDeroulant.addEventListener("mouseenter", () =>{
+    accederMenu.classList.add("hidden");
+    menuDeroulantId.style.display = "block";
+})
+
+sectionMenuDeroulant.addEventListener("mouseleave", () =>{
+    accederMenu.classList.remove("hidden");
+    menuDeroulantId.style.display = "none";
+})
+
+choixMenu.forEach(element => {
+    element.addEventListener("mouseenter", () =>{
+        element.classList.add("styleChoixMenu");
+    })
+
+    element.addEventListener("mouseleave", () =>{
+        element.classList.remove("styleChoixMenu");
+    })
+});
+
+let btnDeconnexion = document.getElementById("btnDeconnexion");
+let btnDashBoard = document.getElementById("btnDashBoard");
+
+btnDeconnexion.addEventListener("click", () =>{
+  localStorage.removeItem("userId");
+  localStorage.removeItem("portefeuilleActifID");
+
+  window.location.replace("index.html")
+})
+
+btnDashBoard.addEventListener("click", () =>{
+    accederMenu.classList.remove("hidden");
+    menuDeroulantId.style.display = "none";
+})
+
+
+
+
+// III.
 let deuxiemeSection = document.getElementById("idDeuxiemeSection");
 let vosActions = document.getElementById("vosActions");
 vosActions.addEventListener('click', () =>{
@@ -242,25 +289,8 @@ async function afficherActions(idportefeuille){
   });
   
   // --- Cotation action ---
-
-  data.actions.forEach(async (a, index) =>{
-    const res = await fetch(`${API_URL}/quote/${a.symbol}`);
-    if(!res.ok)return;
-
-    const prixActuelData = await res.json();
-    const prixActuel = prixActuelData.prix;
-
-    const prixAchat = parseFloat(a.prixachataction);
-    const quantite = a.quantiteaction;
-
-    const gainTotalEuro = (prixActuel - prixAchat) * quantite;
-    const gainTotalPourcent =  ((prixActuel / prixAchat) -1 ) *100;
-
-    const tr = tbody.children[index];
-    tr.children[3].textContent = `${gainTotalEuro.toFixed(2)} €`;
-    tr.children[4].textContent = `${gainTotalPourcent.toFixed(2)} %`;
-
-  })
+  remplirGainTableau(data, tbody);
+  
 }
 
 
@@ -311,13 +341,18 @@ async function afficherToutesLesActions(iduser){
   });
 
   // --- Cotation action ---
+  remplirGainTableau(data, tbody);
+}
 
+
+async function remplirGainTableau(data, tbody){
   data.actions.forEach(async (a, index) =>{
     const res = await fetch(`${API_URL}/quote/${a.symbol}`);
     if(!res.ok)return;
 
     const prixActuelData = await res.json();
     const prixActuel = prixActuelData.prix;
+    const prixPrecedent = prixActuelData.prixPrecedent;
 
     const prixAchat = parseFloat(a.prixachataction);
     const quantite = a.quantiteaction;
@@ -325,10 +360,31 @@ async function afficherToutesLesActions(iduser){
     const gainTotalEuro = (prixActuel - prixAchat) * quantite;
     const gainTotalPourcent =  ((prixActuel / prixAchat) -1 ) *100;
 
-    const tr = tbody.children[index];
-    tr.children[3].textContent = `${gainTotalEuro.toFixed(2)} €`;
-    tr.children[4].textContent = `${gainTotalPourcent.toFixed(2)} %`;
+    const gainJourEuro = (prixActuel - prixPrecedent) * quantite;
+    const gainJourPourcent = ((prixActuel / prixPrecedent) - 1) * 100;
 
+    const tr = tbody.children[index];
+    tr.children[3].textContent = `${gainJourEuro.toFixed(2)} €`;
+    tr.children[4].textContent = `${gainJourPourcent.toFixed(2)} %`;
+    tr.children[5].textContent = `${gainTotalEuro.toFixed(2)} €`;
+    tr.children[6].textContent = `${gainTotalPourcent.toFixed(2)} %`;
+
+    const appliqueCouleur = (td, valeur) =>{
+      td.classList.remove("actionPositive","actionNegative");
+      if(valeur < 0)
+      {
+        td.classList.add("actionNegative");
+      }
+      else if(valeur > 0)
+      {
+        td.classList.add("actionPositive");
+      }
+    };
+
+    appliqueCouleur(tr.children[3], gainJourEuro);
+    appliqueCouleur(tr.children[4], gainJourPourcent);
+    appliqueCouleur(tr.children[5], gainTotalEuro);
+    appliqueCouleur(tr.children[6], gainTotalPourcent);
   })
 }
 
@@ -477,6 +533,39 @@ async function chargerListePortefeuille(nomIdSelectPortefeuille) {
   });
 }
 
+let LIST_ACTIONS = [];
+
+async function chargerListeActions(){
+  try{
+    const res = await fetch(`${API_URL}/listeActions`);
+    const data = await res.json();
+    LIST_ACTIONS = data;
+    remplirListeActions();
+  }
+  catch (err){
+    console.error("Erreur chargement des actions :", err)
+  }
+}
+
+function remplirListeActions(){
+  const datalist = document.getElementById("listeActions");
+  datalist.innerHTML = "";
+
+  LIST_ACTIONS.forEach(a=> {
+    const option = document.createElement("option");
+    option.value = `${a.symbol} - ${a.name}`;
+    datalist.appendChild(option)
+  })
+}
+
+document.getElementById("nomAction").addEventListener("change", (e) =>{
+  const valuerChoisie = e.target.value;
+  const trouvee = LIST_ACTIONS.find(a=> valuerChoisie.startsWith(a.symbol));
+  if(trouvee){
+    document.getElementById("symbolAction").value = trouvee.symbol;
+  }
+})
+
 //----MODALE-----
 const btnAchatAction = document.getElementById("achatAction");
 const modalAchat = document.getElementById("modalAchatAction");
@@ -485,6 +574,7 @@ const formAchatAction = document.getElementById("formAchatAction");
 
 btnAchatAction.addEventListener("click", function (e) {
   chargerListePortefeuille("selectPortefeuilleActionAchat");
+  chargerListeActions();
   modalAchat.style.display = "block";
 });
 

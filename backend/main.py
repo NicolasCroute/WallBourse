@@ -7,7 +7,9 @@ from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Platefor
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import date
+from dotenv import load_dotenv
 import yfinance as yf
+import requests
 import os
 
 
@@ -36,6 +38,33 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+
+#============================================================
+#=====================LISTE ACTION FINNHUB===================
+#============================================================
+load_dotenv()
+EOD_API_KEY = os.getenv("EOD_API_KEY")
+
+@app.get("/listeActions")
+def getListeActionParis():
+    url = f"https://eodhd.com/api/exchange-symbol-list/PA?api_token={EOD_API_KEY}&fmt=json"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+        # selectionne que actions :
+        actions = [
+            {"symbol": d["Code"] + ".PA", "name": d["Name"]}
+            for d in data
+            if d.get("Type", "").lower() in ["common stock", "equity"]
+        ]
+        return actions[:500]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Finnhub : {str(e)}")
+
 
 
 #===================================================
@@ -405,9 +434,15 @@ def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
 def get_cotation_actuelle(symbol: str):
     try:
         stock = yf.Ticker(symbol)
-        historique = stock.history(period="1d")
-        dernier_prix = historique["Close"].iloc[-1]
-        return {"symbol": symbol, "prix": round(float(dernier_prix), 2)}
+        historique = stock.history(period="2d")
+
+        if len(historique)<2:
+            raise HTTPException(status_code=400, detail="Pas assez de données pour ce symbole")
+
+        prix_hier = historique["Close"].iloc[-2]
+        prix_aujourdhui = historique["Close"].iloc[-1]
+
+        return {"symbol": symbol, "prix": round(float(prix_aujourdhui), 2),  "prixPrecedent":round(float(prix_hier), 2)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur récuperation de prix : {str(e)}")
 
