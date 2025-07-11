@@ -26,11 +26,11 @@ body{
   line-height: 1.2;
 }
 
-.actionPositive{
+.positif{
   color: #00A761;
 }
 
-.actionNegative{
+.negatif{
   color: #db0202;
 }
 
@@ -314,13 +314,11 @@ body{
   text-align: center;
 }
 
-.petitTextValorisation{
-  font-size: 1em;
+.txtValorisation{
   margin: 4px 0;
-  color: #00A761;
-  font-weight: bold;
   text-align: center;
   font-size: 1.4em;
+  font-weight: 600;
 }
 
 #prixTotal{
@@ -328,7 +326,7 @@ body{
   color: #0099FF;
   text-align: center;
   font-weight: bold;
-  font-size: 1.4em;
+  font-size: 1.6em;
 }
 
 .deuxiemeSection{

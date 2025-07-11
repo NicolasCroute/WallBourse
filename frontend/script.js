@@ -244,60 +244,18 @@ const tbody = document.querySelector(".tableAction tbody")
 
 async function afficherActions(idportefeuille){
   const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/actions`);
-  const data = await res.json()
-
-  //---Prix total---
-  const prixTotal = document.getElementById("prixTotal");
-  prixTotal.innerHTML = parseFloat(data.totalportefeuille).toFixed(2) + " €"
-
-  //---Tableau---
-  tbody.innerHTML = "";
-
-  data.actions.forEach(a => {
-    const tr = document.createElement("tr");
-
-    const tdNomAction = document.createElement("td");
-    tdNomAction.textContent = a.nomaction;
-
-    const tdQuantite = document.createElement("td");
-    tdQuantite.textContent = a.quantiteaction;
-
-    const tdPrixAchat = document.createElement("td");
-    tdPrixAchat.textContent = a.prixachataction;
-
-    const tdGainJourEuro = document.createElement("td");
-    tdGainJourEuro.textContent = "0 €";
-
-    const tdGainJourPourcent = document.createElement("td");
-    tdGainJourPourcent.textContent = "0 %";
-
-    const tdGainTotalEuro = document.createElement("td");
-    tdGainTotalEuro.textContent = "0 €";
-
-    const tdGainTotalPourcent = document.createElement("td");
-    tdGainTotalPourcent.textContent = "0 %";
-
-    tr.appendChild(tdNomAction);
-    tr.appendChild(tdQuantite);
-    tr.appendChild(tdPrixAchat);
-    tr.appendChild(tdGainJourEuro);
-    tr.appendChild(tdGainJourPourcent);
-    tr.appendChild(tdGainTotalEuro);
-    tr.appendChild(tdGainTotalPourcent);
-
-    tbody.appendChild(tr);
-  });
-  
-  // --- Cotation action ---
-  remplirGainTableau(data, tbody);
-  
+  const data = await res.json();
+  afficherListeActions(data);
 }
 
 
 async function afficherToutesLesActions(iduser){
   const res = await fetch(`${API_URL}/utilisateur/${iduser}/actions`);
-  const data = await res.json()
+  const data = await res.json();
+  afficherListeActions(data);
+}
 
+async function afficherListeActions(data){
   //---Prix total---
   const prixTotal = document.getElementById("prixTotal");
   prixTotal.innerHTML = parseFloat(data.totalportefeuille).toFixed(2) + " €"
@@ -305,7 +263,7 @@ async function afficherToutesLesActions(iduser){
   //---Tableau---
   tbody.innerHTML = "";
   
-  data.actions.forEach(a => {
+  for (const a of data.actions) {
     const tr = document.createElement("tr");
 
     const tdNomAction = document.createElement("td");
@@ -316,6 +274,11 @@ async function afficherToutesLesActions(iduser){
 
     const tdPrixAchat = document.createElement("td");
     tdPrixAchat.textContent = a.prixachataction;
+
+    const tdPrixActuel = document.createElement("td");
+    const res = await fetch(`${API_URL}/quote/${a.symbol}`);
+    const dataPrix = await res.json();
+    tdPrixActuel.textContent = dataPrix.prix.toFixed(2);
 
     const tdGainJourEuro = document.createElement("td");
     tdGainJourEuro.textContent = "0 €";
@@ -332,21 +295,27 @@ async function afficherToutesLesActions(iduser){
     tr.appendChild(tdNomAction);
     tr.appendChild(tdQuantite);
     tr.appendChild(tdPrixAchat);
+    tr.appendChild(tdPrixActuel);
     tr.appendChild(tdGainJourEuro);
     tr.appendChild(tdGainJourPourcent);
     tr.appendChild(tdGainTotalEuro);
     tr.appendChild(tdGainTotalPourcent);
 
     tbody.appendChild(tr);
-  });
+  };
 
   // --- Cotation action ---
   remplirGainTableau(data, tbody);
+  
 }
 
 
 async function remplirGainTableau(data, tbody){
-  data.actions.forEach(async (a, index) =>{
+  let totalInvesti = 0;
+  let totalActuel = 0;
+  let totalGainEuro = 0;
+
+  const promises = data.actions.map(async (a, index) =>{
     const res = await fetch(`${API_URL}/quote/${a.symbol}`);
     if(!res.ok)return;
 
@@ -356,37 +325,88 @@ async function remplirGainTableau(data, tbody){
 
     const prixAchat = parseFloat(a.prixachataction);
     const quantite = a.quantiteaction;
+    
+    const fraisTotal = parseFloat(a.fraistotal || 0);
 
-    const gainTotalEuro = (prixActuel - prixAchat) * quantite;
-    const gainTotalPourcent =  ((prixActuel / prixAchat) -1 ) *100;
+    console.log("Frais transaction total : " + fraisTotal)
+    const valeurAchat = (prixAchat * quantite) + fraisTotal;
+    const valeurActuelle = prixActuel * quantite;
+
+    const gainTotalEuro = valeurActuelle - valeurAchat;
+    let gainTotalPourcent = 0;
+    if(valeurAchat >0){
+      gainTotalPourcent = (gainTotalEuro / valeurAchat) * 100;
+    }
 
     const gainJourEuro = (prixActuel - prixPrecedent) * quantite;
     const gainJourPourcent = ((prixActuel / prixPrecedent) - 1) * 100;
 
+    totalInvesti += valeurAchat;
+    totalActuel += valeurActuelle;
+    totalGainEuro += gainTotalEuro;
+
     const tr = tbody.children[index];
-    tr.children[3].textContent = `${gainJourEuro.toFixed(2)} €`;
-    tr.children[4].textContent = `${gainJourPourcent.toFixed(2)} %`;
-    tr.children[5].textContent = `${gainTotalEuro.toFixed(2)} €`;
-    tr.children[6].textContent = `${gainTotalPourcent.toFixed(2)} %`;
+    tr.children[4].textContent = `${gainJourEuro.toFixed(2)} €`;
+    tr.children[5].textContent = `${gainJourPourcent.toFixed(2)} %`;
+    tr.children[6].textContent = `${gainTotalEuro.toFixed(2)} €`;
+    tr.children[7].textContent = `${gainTotalPourcent.toFixed(2)} %`;
 
     const appliqueCouleur = (td, valeur) =>{
-      td.classList.remove("actionPositive","actionNegative");
+      td.classList.remove("positif","negatif");
       if(valeur < 0)
       {
-        td.classList.add("actionNegative");
+        td.classList.add("negatif");
       }
       else if(valeur > 0)
       {
-        td.classList.add("actionPositive");
+        td.classList.add("positif");
       }
     };
 
-    appliqueCouleur(tr.children[3], gainJourEuro);
-    appliqueCouleur(tr.children[4], gainJourPourcent);
-    appliqueCouleur(tr.children[5], gainTotalEuro);
-    appliqueCouleur(tr.children[6], gainTotalPourcent);
-  })
+    appliqueCouleur(tr.children[4], gainJourEuro);
+    appliqueCouleur(tr.children[5], gainJourPourcent);
+    appliqueCouleur(tr.children[6], gainTotalEuro);
+    appliqueCouleur(tr.children[7], gainTotalPourcent);
+  });
+
+  await Promise.all(promises)
+
+  let gainPourcentTotal;
+  if(totalInvesti > 0){
+    gainPourcentTotal = ((totalActuel / totalInvesti) - 1 ) *100;
+  }
+  else{
+    gainPourcentTotal = 0
+  }
+
+  remplirCarteValorisation(totalGainEuro, gainPourcentTotal);
 }
+
+function remplirCarteValorisation(valorisationEuro, valorisationPourcent){
+  const txtValorisationEuro = document.getElementById("valorisationEuro");
+  const txtValorisationPourcent = document.getElementById("valorisationPourcent");
+
+  txtValorisationEuro.classList.remove("positif", "negatif");
+  txtValorisationPourcent.classList.remove("positif", "negatif");
+
+  if(valorisationEuro<0){
+    txtValorisationEuro.classList.add("negatif");
+  }
+  else{
+    txtValorisationEuro.classList.add("positif");
+  }
+
+  if(valorisationPourcent<0){
+    txtValorisationPourcent.classList.add("negatif");
+  }
+  else{
+    txtValorisationPourcent.classList.add("positif");
+  }
+
+  txtValorisationEuro.textContent = valorisationEuro.toFixed(2) + " €";
+  txtValorisationPourcent.textContent = valorisationPourcent.toFixed(2) + " %";
+}
+
 
 // -----------------------------------
 // --- Ajout Portefeuille (Modale) ---
@@ -533,38 +553,37 @@ async function chargerListePortefeuille(nomIdSelectPortefeuille) {
   });
 }
 
-let LIST_ACTIONS = [];
+let LISTE_RECHERCHE = [];
 
-async function chargerListeActions(){
-  try{
-    const res = await fetch(`${API_URL}/listeActions`);
-    const data = await res.json();
-    LIST_ACTIONS = data;
-    remplirListeActions();
-  }
-  catch (err){
-    console.error("Erreur chargement des actions :", err)
-  }
-}
+document.getElementById("nomAction").addEventListener("input", async (e) =>{
+  const recherche = e.target.value.trim();
+  if(recherche.length < 2) return;
 
-function remplirListeActions(){
+  const res = await fetch(`${API_URL}/rechercheActions?nom=${recherche}`);
+  const data = await res.json();
+  LISTE_RECHERCHE = data;
+
   const datalist = document.getElementById("listeActions");
-  datalist.innerHTML = "";
 
-  LIST_ACTIONS.forEach(a=> {
+  datalist.innerHTML = "";
+  data.forEach(a =>{
     const option = document.createElement("option");
     option.value = `${a.symbol} - ${a.name}`;
-    datalist.appendChild(option)
-  })
-}
+    datalist.appendChild(option);
+  });
+});
 
 document.getElementById("nomAction").addEventListener("change", (e) =>{
-  const valuerChoisie = e.target.value;
-  const trouvee = LIST_ACTIONS.find(a=> valuerChoisie.startsWith(a.symbol));
+  const valeurChoisie = e.target.value;
+  const trouvee = LISTE_RECHERCHE.find(a => valeurChoisie.startsWith(a.symbol));
   if(trouvee){
     document.getElementById("symbolAction").value = trouvee.symbol;
   }
-})
+  else{
+    document.getElementById("symbolAction").value = "";
+  }
+});
+
 
 //----MODALE-----
 const btnAchatAction = document.getElementById("achatAction");
@@ -574,7 +593,6 @@ const formAchatAction = document.getElementById("formAchatAction");
 
 btnAchatAction.addEventListener("click", function (e) {
   chargerListePortefeuille("selectPortefeuilleActionAchat");
-  chargerListeActions();
   modalAchat.style.display = "block";
 });
 
@@ -618,7 +636,7 @@ formAchatAction.addEventListener("submit", async function (e) {
     const idaction = data.id;
     alert("Action ajouté ! ");
     const typeTransactionAchat = "ACHAT"
-    enregistrerTransaction(dateAchatActionValue, typeTransactionAchat, quantiteActionValue, montantInitActionValue, idaction);
+    enregistrerTransaction(dateAchatActionValue, typeTransactionAchat, quantiteActionValue, montantInitActionValue, idaction, idportefeuilleValue);
     modalAchat.style.display = "none";
     
     if(portefeuilleActifID)
@@ -701,6 +719,7 @@ formVenteAction.addEventListener("submit", async function (e) {
   const quantite = parseInt(e.target.quantiteActionVente.value);
   const dateVente = e.target.dateVenteAction.value;
   const prixVente = parseFloat(e.target.montantVenteAction.value);
+  let idportefeuilleValue = parseInt(document.getElementById("selectPortefeuilleActionVente").value)
 
   if(!idaction || !quantite || quantite <= 0){
     alert("Selectioner une action et une quantité valide")
@@ -716,8 +735,7 @@ formVenteAction.addEventListener("submit", async function (e) {
 
   if(res.ok){
     alert("Action vendu !")
-
-    await enregistrerTransaction(dateVente, "VENTE", quantite, prixVente, idaction);
+    await enregistrerTransaction(dateVente, "VENTE", quantite, prixVente, idaction, idportefeuilleValue);
 
     modalVente.style.display = "none";
     
@@ -737,7 +755,7 @@ formVenteAction.addEventListener("submit", async function (e) {
 })
 
 
-async function enregistrerTransaction(date, type, quantite, prix, idaction) {
+async function enregistrerTransaction(date, type, quantite, prix, idaction, idportefeuille) {
   const res = await fetch(`${API_URL}/transaction`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -747,6 +765,7 @@ async function enregistrerTransaction(date, type, quantite, prix, idaction) {
       quantitetransaction: quantite,
       prixtransaction: prix,
       idaction: idaction,
+      idportefeuille: idportefeuille
     })
   });
 }
