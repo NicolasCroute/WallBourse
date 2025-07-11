@@ -28,12 +28,13 @@ class Action(Base):
     __tablename__ = "action"
 
     idaction = Column(Integer, primary_key=True, index=True)
-    nomaction = Column(String(50), nullable=False)
+    nomaction = Column(String(200), nullable=False)
     symbol = Column(String(10), nullable=False)
     quantiteaction = Column(Integer, nullable=False)
     dateachataction = Column(Date, nullable=False)
     prixachataction = Column(DECIMAL, nullable=False)
     idportefeuille = Column(Integer, ForeignKey("portefeuille.idportefeuille"), nullable=False)
+    actionvendu = Column(Boolean, default=False)
 
 
 class Plateforme(Base):
@@ -41,8 +42,6 @@ class Plateforme(Base):
 
     idplateforme = Column(Integer, primary_key=True, index=True)
     nomplateforme = Column(String(50), nullable=False)
-    fraisfixe = Column(DECIMAL, nullable=False)
-    fraispercent = Column(DECIMAL, nullable=False)
 
 class TypePortefeuille(Base):
     __tablename__ = "typeportefeuille"
@@ -60,4 +59,5 @@ class Transaction(Base):
     typetransaction = Column(String(10), nullable=False)
     quantitetransaction = Column(Integer, nullable=False)
     prixtransaction = Column(DECIMAL, nullable=False)
+    fraistransaction = Column(DECIMAL, nullable=False)
     idaction = Column(Integer, ForeignKey("action.idaction"), nullable=False)

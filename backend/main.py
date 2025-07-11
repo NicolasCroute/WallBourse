@@ -1,16 +1,20 @@
 from fastapi import FastAPI, Depends, HTTPException, Request, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, create_engine
+from sqlalchemy import and_, create_engine, func
 from database import SessionLocal, engine, Base
 from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Transaction
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import date
 from dotenv import load_dotenv
+from ttf import TTF_ISIN_LIST
+from session import utilisateur_connecte_id
 import yfinance as yf
 import requests
+import logging
 import os
+
 
 
 #=============================================
@@ -40,6 +44,84 @@ def get_db():
         db.close()
 
 
+#=============================================
+#=====================LOGIN===================
+#=============================================
+
+# que pour POST (évite async, ...)
+class LoginData(BaseModel):
+    emailutilisateur: str
+    motsdepasseutilisateur: str
+
+# Route post login
+@app.post("/login")
+def login(data: LoginData, db: Session = Depends(get_db)):
+    global utilisateur_connecte_id
+
+    user = db.query(Utilisateur).filter_by(
+        emailutilisateur=data.emailutilisateur,
+        motsdepasseutilisateur=data.motsdepasseutilisateur 
+    ).first()
+
+    if user:
+        utilisateur_connecte_id = user.idutilisateur
+        return {
+            "idUtilisateur":user.idutilisateur,
+            "emailutilisateur":user.emailutilisateur,
+            "motsdepasseutilisateur":user.motsdepasseutilisateur
+        }
+    else:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+
+
+#=====================================================
+#=====================GESTION DROIT===================
+#=====================================================
+
+def getUtilisateurActuel(db: Session = Depends(get_db)):
+    if not utilisateur_connecte_id:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    user = db.query(Utilisateur).filter_by(idutilisateur=utilisateur_connecte_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    return user
+
+def adminRequis(user: Utilisateur = Depends(getUtilisateurActuel)):
+    if not user.estadmin:
+        raise HTTPException(status_code=403, detail="Accès interdit (admin uniquement)")
+    return user
+
+
+#===================================================
+#=====================INSCRIPTION===================
+#===================================================
+class InscriptionData(BaseModel):
+    prenomutilisateur: str
+    nomutilisateur: str
+    emailutilisateur: str
+    motsdepasseutilisateur: str
+
+@app.post("/inscription")
+def login(data: InscriptionData, db: Session = Depends(get_db)):
+
+    userExistant = db.query(Utilisateur).filter_by(emailutilisateur=data.emailutilisateur).first()
+
+    if userExistant:
+       raise HTTPException(status_code=400, detail="Email déja utilisé")
+
+    nouvel_utilisateur = Utilisateur(
+        prenomutilisateur=data.prenomutilisateur,
+        nomutilisateur=data.nomutilisateur,
+        emailutilisateur=data.emailutilisateur,
+        motsdepasseutilisateur=data.motsdepasseutilisateur
+    )
+
+    db.add(nouvel_utilisateur)
+    db.commit()
+    db.refresh(nouvel_utilisateur)
+
+    return {"message":"Inscription réussie", "idUtilisateur": nouvel_utilisateur.idutilisateur}
+
 
 #============================================================
 #=====================LISTE ACTION FINNHUB===================
@@ -47,23 +129,33 @@ def get_db():
 load_dotenv()
 EOD_API_KEY = os.getenv("EOD_API_KEY")
 
-@app.get("/listeActions")
-def getListeActionParis():
-    url = f"https://eodhd.com/api/exchange-symbol-list/PA?api_token={EOD_API_KEY}&fmt=json"
+@app.get("/rechercheActions")
+def rechercheAction(nom: str, user: Utilisateur = Depends(getUtilisateurActuel)):
     try:
+        url = f"https://eodhd.com/api/search/{nom}?api_token={EOD_API_KEY}&fmt=json"
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
 
         # selectionne que actions :
-        actions = [
-            {"symbol": d["Code"] + ".PA", "name": d["Name"]}
-            for d in data
-            if d.get("Type", "").lower() in ["common stock", "equity"]
-        ]
-        return actions[:500]
+        actions=[]
+        for d in data:
+            if d.get("Type", "").lower() in["common stock", "equity"]:
+                exchange = d.get("Exchange")
+                code = d.get("Code")
+
+                if exchange == "PA":
+                    symbol = f"{code}.PA"
+                else:
+                    symbol = code
+                
+                actions.append({
+                    "symbol": symbol,
+                    "name":d.get("Name")
+                })
+        return actions
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur Finnhub : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur recherche : {str(e)}")
 
 
 
@@ -72,7 +164,7 @@ def getListeActionParis():
 #===================================================
 
 @app.get("/utilisateur")
-def get_utilisateurs(db: Session = Depends(get_db)):
+def get_utilisateurs(db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
     utilisateurs = db.query(Utilisateur).all()
     return [
         {
@@ -86,7 +178,10 @@ def get_utilisateurs(db: Session = Depends(get_db)):
         for u in utilisateurs]
 
 @app.get("/utilisateur/{id}")
-def get_utilisateur_id(id: int, db: Session = Depends(get_db)):
+def get_utilisateur_id(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    if user.idutilisateur != id and not user.estadmin:
+        raise HTTPException(status_code=403, detail="Accès interdit")
+    
     utilisateur = db.query(Utilisateur).filter_by(idutilisateur=id).first()
     return {
         "idutilisateur": utilisateur.idutilisateur, 
@@ -103,7 +198,7 @@ def get_utilisateur_id(id: int, db: Session = Depends(get_db)):
 #====================================================
 
 @app.get("/portefeuille")
-def get_portefeuilles(db: Session = Depends(get_db)):
+def get_portefeuilles(db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
     portefeuilles = db.query(Portefeuille).all()
     return [
         {
@@ -116,7 +211,10 @@ def get_portefeuilles(db: Session = Depends(get_db)):
 
 #====Route portefeuilles par utilisateur=====
 @app.get("/utilisateur/{id}/portefeuilles")
-def get_portefeuilles_par_utilisateur(id: int, db: Session = Depends(get_db)):
+def get_portefeuilles_par_utilisateur(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    if user.idutilisateur != id and not user.estadmin:
+        raise HTTPException(status_code=403, detail="Accès interdit")
+    
     portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
     return [
         {
@@ -171,7 +269,7 @@ def supprimer_portefeuille(id: int, db: Session = Depends(get_db)):
 #==============================================
 
 @app.get("/action")
-def get_actions(db: Session = Depends(get_db)):
+def get_actions(db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
     actions = db.query(Action).all()
     return [
         {
@@ -181,14 +279,19 @@ def get_actions(db: Session = Depends(get_db)):
             "symbol": a.symbol,
             "quantiteaction":a.quantiteaction, 
             "dateachataction":a.dateachataction,
-            "prixachataction":a.prixachataction
+            "prixachataction":a.prixachataction,
+            "actionvendu":a.actionvendu
         } 
         for a in actions]
 
 @app.get("/portefeuille/{id}/actions")
-def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db)):
+def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
     portefeuille = db.query(Portefeuille).filter_by(idportefeuille=id).first()
-    actions = db.query(Action).filter_by(idportefeuille=id).all()
+
+    if user.idutilisateur != portefeuille.idutilisateur and not user.estadmin:
+        raise HTTPException(status_code=403, detail="Accès interdit")
+
+    actions = db.query(Action).filter_by(idportefeuille=id, actionvendu=False).all()
     return {
         "totalportefeuille": float(portefeuille.totalportefeuille),
         "actions":[
@@ -197,7 +300,9 @@ def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db)):
                 "nomaction":a.nomaction,
                 "symbol":a.symbol,
                 "prixachataction":a.prixachataction,
-                "quantiteaction":a.quantiteaction
+                "quantiteaction":a.quantiteaction,
+                "actionvendu":a.actionvendu,
+                "fraistotal": float((db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction, Transaction.typetransaction == "ACHAT").order_by(Transaction.datetransaction.desc()).first() or [0])[0])
             } 
         
         for a in actions]
@@ -205,14 +310,16 @@ def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db)):
 
 #Toutes les actions
 @app.get("/utilisateur/{id}/actions")
-def get_actions_tous_portefeuilles(id: int, db: Session = Depends(get_db)):
+def get_actions_tous_portefeuilles(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    if user.idutilisateur != id and not user.estadmin:
+        raise HTTPException(status_code=403, detail="Accès interdit")
 
     portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
 
     total = sum([float(p.totalportefeuille) for p in portefeuilles])
 
     ids = [p.idportefeuille for p in portefeuilles]
-    actions = db.query(Action).filter(Action.idportefeuille.in_(ids)).all()
+    actions = db.query(Action).filter(Action.idportefeuille.in_(ids), Action.actionvendu == False).all()
 
     return {
         "totalportefeuille":total,
@@ -223,6 +330,8 @@ def get_actions_tous_portefeuilles(id: int, db: Session = Depends(get_db)):
                 "symbol":a.symbol,
                 "prixachataction":a.prixachataction,
                 "quantiteaction":a.quantiteaction,
+                "actionvendu":a.actionvendu,
+                "fraistotal": float((db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction, Transaction.typetransaction == "ACHAT").order_by(Transaction.datetransaction.desc()).first() or [0])[0])
             }
             for a in actions
         ]
@@ -248,19 +357,26 @@ def ajout_action(data: ActionInput, db: Session = Depends(get_db)):
     ).first()
 
     if action_existante:
-        q_old = action_existante.quantiteaction
-        p_old = float(action_existante.prixachataction)
+        if action_existante.actionvendu:
+            # on écrase les anciennes valeurs par les nouvelles :
+            action_existante.actionvendu = False
+            action_existante.quantiteaction = data.quantiteaction
+            action_existante.dateachataction = data.dateachataction
+            action_existante.prixachataction = data.prixachataction
+        else:
+            q_old = action_existante.quantiteaction
+            p_old = float(action_existante.prixachataction)
 
-        q_new = data.quantiteaction
-        p_new = float(data.prixachataction)
+            q_new = data.quantiteaction
+            p_new = float(data.prixachataction)
 
-        # Calculer la moyenne des actions pour pouvoir les cumuler
-        q_total = q_old + q_new
-        p_moyen = ((p_old*q_old) + (p_new*q_new))/q_total
+            # Calculer la moyenne des actions pour pouvoir les cumuler
+            q_total = q_old + q_new
+            p_moyen = ((p_old*q_old) + (p_new*q_new))/q_total
 
-        action_existante.quantiteaction = q_total
-        action_existante.dateachataction = data.dateachataction
-        action_existante.prixachataction = p_moyen
+            action_existante.quantiteaction = q_total
+            action_existante.dateachataction = data.dateachataction
+            action_existante.prixachataction = p_moyen
 
         db.commit()
         return {"message": "Action mise a jour", "id":action_existante.idaction}
@@ -291,71 +407,12 @@ def vendre_action(id: int, quantite: int = Query(..., gt=0), db: Session = Depen
         raise HTTPException(status_code=400, detail="Quantité vendu supperieur à celle possedée")
     
     action.quantiteaction -= quantite
+
     if action.quantiteaction == 0:
-        db.delete(action)
+        action.actionvendu = True
 
     db.commit()
     return
-
-#=============================================
-#=====================LOGIN===================
-#=============================================
-
-# que pour POST (évite async, ...)
-class LoginData(BaseModel):
-    emailutilisateur: str
-    motsdepasseutilisateur: str
-
-# Route post login
-@app.post("/login")
-def login(data: LoginData, db: Session = Depends(get_db)):
-
-    user = db.query(Utilisateur).filter_by(
-        emailutilisateur=data.emailutilisateur,
-        motsdepasseutilisateur=data.motsdepasseutilisateur 
-    ).first()
-
-    if user:
-        return {
-            "idUtilisateur":user.idutilisateur,
-            "emailutilisateur":user.emailutilisateur,
-            "motsdepasseutilisateur":user.motsdepasseutilisateur
-        }
-    else:
-        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-
-
-#===================================================
-#=====================INSCRIPTION===================
-#===================================================
-class InscriptionData(BaseModel):
-    prenomutilisateur: str
-    nomutilisateur: str
-    emailutilisateur: str
-    motsdepasseutilisateur: str
-
-@app.post("/inscription")
-def login(data: InscriptionData, db: Session = Depends(get_db)):
-
-    userExistant = db.query(Utilisateur).filter_by(emailutilisateur=data.emailutilisateur).first()
-
-    if userExistant:
-       raise HTTPException(status_code=400, detail="Email déja utilisé")
-
-    nouvel_utilisateur = Utilisateur(
-        prenomutilisateur=data.prenomutilisateur,
-        nomutilisateur=data.nomutilisateur,
-        emailutilisateur=data.emailutilisateur,
-        motsdepasseutilisateur=data.motsdepasseutilisateur
-    )
-
-    db.add(nouvel_utilisateur)
-    db.commit()
-    db.refresh(nouvel_utilisateur)
-
-    return {"message":"Inscription réussie", "idUtilisateur": nouvel_utilisateur.idutilisateur}
-
-
 #=========================================================
 #=====================TYPE PORTEFEUILLE===================
 #=========================================================
@@ -379,9 +436,7 @@ def get_plateforme(db: Session = Depends(get_db)):
     return [
         {
             "idplateforme":p.idplateforme,
-            "nomplateforme":p.nomplateforme,
-            "fraisfixe":float(p.fraisfixe),
-            "fraispercent":float(p.fraispercent)
+            "nomplateforme":p.nomplateforme
         } 
         for p in plateforme]
 
@@ -389,7 +444,7 @@ def get_plateforme(db: Session = Depends(get_db)):
 #=====================TRANSACTION===================
 #===================================================
 @app.get("/transaction")
-def get_transaction(db: Session = Depends(get_db)):
+def get_transaction(db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
     transaction = db.query(Transaction).all()
     return [
         {
@@ -398,6 +453,7 @@ def get_transaction(db: Session = Depends(get_db)):
             "typetransaction":t.typetransaction,
             "quantitetransaction":t.quantitetransaction,
             "prixtransaction":float(t.prixtransaction),
+            "fraistransaction":float(t.fraistransaction),
             "idaction":t.idaction,
         } 
         for t in transaction]
@@ -410,14 +466,54 @@ class TransactionInput(BaseModel):
     quantitetransaction: int
     prixtransaction: float
     idaction: int
+    idportefeuille: int
+
+EOD_API_KEY = os.getenv("EOD_API_KEY")
 
 @app.post("/transaction")
 def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
+    montantOrdre = data.quantitetransaction * data.prixtransaction
+
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
+    plateforme = db.query(Plateforme).filter_by(idplateforme=portefeuille.idplateforme).first()
+    
+    if plateforme.nomplateforme.lower() == "bourse direct":
+        frais = calculerFraisTransactionBourseDirecte(montantOrdre)
+    else:
+        frais = 0.0
+
+    # ==============MARCHE PAS ====================
+    if data.typetransaction.upper() == "ACHAT":
+        action = db.query(Action).filter_by(idaction=data.idaction).first()
+        if action:
+            try:
+                url = f"https://eodhd.com/api/search/{action.symbol}?api_token={EOD_API_KEY}&fmt=json"
+                response = requests.get(url)
+                response.raise_for_status()
+                results = response.json()
+
+                # trouver l’ISIN correspondant
+                for r in results:
+                    codeActionFrancais = r.get("Code") + ".PA"
+                    if codeActionFrancais  == action.symbol:
+                        isin = r.get("ISIN")
+                        if isin:
+                            print(f"[TTF] ISIN pour {action.symbol} : {isin}")
+                            if isin in TTF_ISIN_LIST:
+                                taxe_ttf = montantOrdre * 0.004
+                                frais += taxe_ttf
+                                print(f"[TTF] Appliquée : {taxe_ttf:.2f} €")
+                        break
+            except Exception as e:
+                print(f"[TTF] Erreur récupération ISIN via EODHD : {e}")
+    # ==============MARCHE PAS ====================
+
     nouvelleTransaction = Transaction(
         datetransaction=data.datetransaction,
         typetransaction=data.typetransaction,
         quantitetransaction=data.quantitetransaction,
         prixtransaction=data.prixtransaction,
+        fraistransaction=frais,
         idaction=data.idaction
     )
     db.add(nouvelleTransaction)
@@ -426,23 +522,36 @@ def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
     return{"message":"Transaction ajouté", "id":nouvelleTransaction.idtransaction}
 
 
+def calculerFraisTransactionBourseDirecte(montant: float) -> float:
+    if montant < 500:
+        return 0.99
+    elif montant < 1000:
+        return 1.90
+    elif montant < 2000:
+        return 2.90
+    elif montant > 4400:
+        return round(montant * 0.0009, 2)
+    else:
+        return 3.90
+
 #=======================================================
 #=====================COTATION ACTION===================
 #=======================================================
 
 @app.get("/quote/{symbol}")
-def get_cotation_actuelle(symbol: str):
+def get_cotation_actuelle(symbol: str, user: Utilisateur = Depends(getUtilisateurActuel)):
     try:
         stock = yf.Ticker(symbol)
-        historique = stock.history(period="2d")
+        info = stock.info
 
-        if len(historique)<2:
+        prix_aujourdhui = info.get("regularMarketPrice")
+        prix_hier = info.get("previousClose")
+
+        if prix_aujourdhui is None or prix_hier is None:
             raise HTTPException(status_code=400, detail="Pas assez de données pour ce symbole")
 
-        prix_hier = historique["Close"].iloc[-2]
-        prix_aujourdhui = historique["Close"].iloc[-1]
-
         return {"symbol": symbol, "prix": round(float(prix_aujourdhui), 2),  "prixPrecedent":round(float(prix_hier), 2)}
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur récuperation de prix : {str(e)}")
 
