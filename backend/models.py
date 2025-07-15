@@ -10,7 +10,7 @@ class Utilisateur(Base):
     nomutilisateur = Column(String(50), nullable=False)
     prenomutilisateur = Column(String(50), nullable=False)
     emailutilisateur = Column(String(80), nullable=False)
-    motsdepasseutilisateur = Column(String(50), nullable=False)
+    motsdepasseutilisateur = Column(String(255), nullable=False)
     estadmin = Column(Boolean, nullable=False)
 
 class Portefeuille(Base):

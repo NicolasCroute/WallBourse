@@ -1,19 +1,23 @@
 from fastapi import FastAPI, Depends, HTTPException, Request, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, create_engine, func
+from sqlalchemy import and_, create_engine, func, desc
 from database import SessionLocal, engine, Base
 from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Transaction
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from datetime import date
+from datetime import datetime, date
 from dotenv import load_dotenv
 from ttf import TTF_ISIN_LIST
 from session import utilisateur_connecte_id
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import yfinance as yf
 import requests
 import logging
+import bcrypt
 import os
+import jwt
+import datetime
 
 
 
@@ -44,6 +48,8 @@ def get_db():
         db.close()
 
 
+
+
 #=============================================
 #=====================LOGIN===================
 #=============================================
@@ -53,23 +59,24 @@ class LoginData(BaseModel):
     emailutilisateur: str
     motsdepasseutilisateur: str
 
+SECRET_KEY = "votre_cle_secrete_super_securite"
+
 # Route post login
 @app.post("/login")
 def login(data: LoginData, db: Session = Depends(get_db)):
     global utilisateur_connecte_id
 
-    user = db.query(Utilisateur).filter_by(
-        emailutilisateur=data.emailutilisateur,
-        motsdepasseutilisateur=data.motsdepasseutilisateur 
-    ).first()
-
-    if user:
-        utilisateur_connecte_id = user.idutilisateur
-        return {
-            "idUtilisateur":user.idutilisateur,
-            "emailutilisateur":user.emailutilisateur,
-            "motsdepasseutilisateur":user.motsdepasseutilisateur
+    user = db.query(Utilisateur).filter_by(emailutilisateur=data.emailutilisateur).first()
+    
+    if user and bcrypt.checkpw(data.motsdepasseutilisateur.encode('utf-8'), user.motsdepasseutilisateur.encode('utf-8')):
+        payload={
+            "sub": str(user.idutilisateur),
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)
         }
+
+        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+        
+        return {"access_token": token, "estadmin": user.estadmin}
     else:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
 
@@ -77,20 +84,36 @@ def login(data: LoginData, db: Session = Depends(get_db)):
 #=====================================================
 #=====================GESTION DROIT===================
 #=====================================================
+auth_scheme = HTTPBearer()
 
-def getUtilisateurActuel(db: Session = Depends(get_db)):
-    if not utilisateur_connecte_id:
-        raise HTTPException(status_code=401, detail="Non authentifié")
-    user = db.query(Utilisateur).filter_by(idutilisateur=utilisateur_connecte_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
-    return user
+def getUtilisateurActuel(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme),db: Session = Depends(get_db)):
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        user = db.query(Utilisateur).filter_by(idutilisateur=user_id).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Utilisateur non trouvé")
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session expirée")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    
 
 def adminRequis(user: Utilisateur = Depends(getUtilisateurActuel)):
     if not user.estadmin:
         raise HTTPException(status_code=403, detail="Accès interdit (admin uniquement)")
     return user
 
+@app.get("/utilisateur/mes-donnees")
+def get_me(user: Utilisateur = Depends(getUtilisateurActuel)):
+    return{
+        "idutilisateur": user.idutilisateur,
+        "nomutilisateur": user.nomutilisateur,
+        "prenomutilisateur": user.prenomutilisateur,
+        "estadmin": user.estadmin
+    }
 
 #===================================================
 #=====================INSCRIPTION===================
@@ -108,12 +131,15 @@ def login(data: InscriptionData, db: Session = Depends(get_db)):
 
     if userExistant:
        raise HTTPException(status_code=400, detail="Email déja utilisé")
+    
+    hashed_pwd = bcrypt.hashpw(data.motsdepasseutilisateur.encode('utf-8'), bcrypt.gensalt())
 
     nouvel_utilisateur = Utilisateur(
         prenomutilisateur=data.prenomutilisateur,
         nomutilisateur=data.nomutilisateur,
         emailutilisateur=data.emailutilisateur,
-        motsdepasseutilisateur=data.motsdepasseutilisateur
+        motsdepasseutilisateur=hashed_pwd.decode('utf-8'),
+        estadmin = False
     )
 
     db.add(nouvel_utilisateur)
@@ -302,7 +328,7 @@ def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db), user: U
                 "prixachataction":a.prixachataction,
                 "quantiteaction":a.quantiteaction,
                 "actionvendu":a.actionvendu,
-                "fraistotal": float((db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction, Transaction.typetransaction == "ACHAT").order_by(Transaction.datetransaction.desc()).first() or [0])[0])
+                "fraistotal": (db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction).order_by(Transaction.datetransaction.desc()).first() or (0,))[0]
             } 
         
         for a in actions]
@@ -320,7 +346,7 @@ def get_actions_tous_portefeuilles(id: int, db: Session = Depends(get_db), user:
 
     ids = [p.idportefeuille for p in portefeuilles]
     actions = db.query(Action).filter(Action.idportefeuille.in_(ids), Action.actionvendu == False).all()
-
+    
     return {
         "totalportefeuille":total,
         "actions":[
@@ -331,7 +357,7 @@ def get_actions_tous_portefeuilles(id: int, db: Session = Depends(get_db), user:
                 "prixachataction":a.prixachataction,
                 "quantiteaction":a.quantiteaction,
                 "actionvendu":a.actionvendu,
-                "fraistotal": float((db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction, Transaction.typetransaction == "ACHAT").order_by(Transaction.datetransaction.desc()).first() or [0])[0])
+                "fraistotal": db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction).order_by(Transaction.datetransaction.desc()).first()[0] or 0
             }
             for a in actions
         ]
@@ -482,7 +508,6 @@ def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
     else:
         frais = 0.0
 
-    # ==============MARCHE PAS ====================
     if data.typetransaction.upper() == "ACHAT":
         action = db.query(Action).filter_by(idaction=data.idaction).first()
         if action:
@@ -500,13 +525,18 @@ def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
                         if isin:
                             print(f"[TTF] ISIN pour {action.symbol} : {isin}")
                             if isin in TTF_ISIN_LIST:
-                                taxe_ttf = montantOrdre * 0.004
+                                seuil_ttf = datetime.datetime.strptime("01/04/2025", "%d/%m/%Y").date()
+                                print(seuil_ttf)
+                                if action.dateachataction <= seuil_ttf:
+                                    taxe_ttf = montantOrdre * 0.003
+                                else:
+                                    taxe_ttf = montantOrdre * 0.004
                                 frais += taxe_ttf
                                 print(f"[TTF] Appliquée : {taxe_ttf:.2f} €")
+                                print(f"[TTF] frais : {frais:.2f} €")
                         break
             except Exception as e:
                 print(f"[TTF] Erreur récupération ISIN via EODHD : {e}")
-    # ==============MARCHE PAS ====================
 
     nouvelleTransaction = Transaction(
         datetransaction=data.datetransaction,

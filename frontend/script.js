@@ -3,28 +3,54 @@ const API_URL =
     ? "http://localhost:8000"
     : "https://wallbourse-backend.onrender.com"
 
+
+async function getUtilisateurActuel() {
+  const token = localStorage.getItem("token")
+  const res = await fetch(`${API_URL}/utilisateur/mes-donnees`,{
+    headers:{
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  if (!res.ok) throw new Error("Non authentifié")
+  return await res.json();
+}
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+
+
 // I.
 // -----------------------------
 // ----------- LOGIN -----------
 // -----------------------------
 window.onload = () => {
-  const isLogged = localStorage.getItem("userId");
-  if(isLogged){
+  const token = localStorage.getItem("token");
+  if(!token) return;
+
+  try {
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("mainSection").style.display = "block";
     afficherPortefeuilles()
     afficherUtilisateur()
   }
+  catch{
+    console.warn("Utilisateur non connecté");
+  }
 };
-
 
 document.getElementById("formConnexion").onsubmit = async (e) => {
   e.preventDefault();
 
   // mettre les donné entré en JSON
   const res = await fetch(`${API_URL}/login`,{
+    headers: {
+      "Content-Type": "application/json",
+    },
     method:"POST",
-    headers: { "Content-Type":"application/json"},
     body: JSON.stringify(
       { 
         emailutilisateur: e.target.emailutilisateur.value, 
@@ -35,9 +61,10 @@ document.getElementById("formConnexion").onsubmit = async (e) => {
   // Verif si serveur a envoyé du code
   if(res.ok){
     // recupère le user
-    const user = await res.json();
+    const data = await res.json();
     //stock dans le navigateur :
-    localStorage.setItem("userId", user.idUtilisateur)
+    localStorage.setItem("token", data.access_token);
+    console.log("Token stocké :", data.access_token);
 
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("mainSection").style.display = "block";
@@ -81,7 +108,9 @@ formInscription.addEventListener('submit', async (e) =>{
   
   const res = await fetch(`${API_URL}/inscription`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
       nomutilisateur: nom,
       prenomutilisateur: prenom,
@@ -91,11 +120,6 @@ formInscription.addEventListener('submit', async (e) =>{
   });
 
   if (res.ok){
-    const user = await res.json();
-    localStorage.setItem("userId", user.idUtilisateur);
-
-    console.log("Réponse backend :", user);
-
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("mainSection").style.display = "block";
 
@@ -145,9 +169,8 @@ let btnDeconnexion = document.getElementById("btnDeconnexion");
 let btnDashBoard = document.getElementById("btnDashBoard");
 
 btnDeconnexion.addEventListener("click", () =>{
-  localStorage.removeItem("userId");
   localStorage.removeItem("portefeuilleActifID");
-
+  localStorage.removeItem("token");
   window.location.replace("index.html")
 })
 
@@ -170,18 +193,12 @@ vosActions.addEventListener('click', () =>{
 // --- UTILISATEUR PRECIS ---
 // --------------------------
 async function afficherUtilisateur() {
-  const userid = localStorage.getItem("userId");
-  if(!userid) return;
-
-  const res = await fetch(`${API_URL}/utilisateur/${userid}`);
-  const data = await res.json();
-
-  console.log(data)
+  const utilisateur = await getUtilisateurActuel();
 
   let nomPrenomUser = document.getElementById("nomPrenomUser");
-  let prenomUser = data.prenomutilisateur
+  let prenomUser = utilisateur.prenomutilisateur
   let prenomUserFomat = prenomUser.charAt(0).toUpperCase() + prenomUser.slice(1).toLowerCase() 
-  nomPrenomUser.innerHTML= data.nomutilisateur.toUpperCase() + " " + prenomUserFomat;
+  nomPrenomUser.innerHTML = utilisateur.nomutilisateur.toUpperCase() + " " + prenomUserFomat;
 }
 
 
@@ -192,10 +209,13 @@ const suppressionPortefeuille = document.getElementById("suppressionPortefeuille
 const select = document.getElementById("listePortefeuilles");
 
 async function afficherPortefeuilles() {
-  const userid = localStorage.getItem("userId");
-  if(!userid) return;
+  const utilisateur = await getUtilisateurActuel();
 
-  const res = await fetch(`${API_URL}/utilisateur/${userid}/portefeuilles`);
+  const res = await fetch(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/portefeuilles`,{
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
   const data = await res.json() 
 
   //---Liste déroulante---
@@ -216,7 +236,7 @@ async function afficherPortefeuilles() {
 
 
   suppressionPortefeuille.style.display = "none";
-  afficherToutesLesActions(userid)
+  afficherToutesLesActions(utilisateur.idutilisateur)
 
   select.onchange = () =>{
     const idPortefeuilleActif = select.value
@@ -230,7 +250,7 @@ async function afficherPortefeuilles() {
     else
     {
       suppressionPortefeuille.style.display = "none";
-      afficherToutesLesActions(userid)
+      afficherToutesLesActions(utilisateur.idutilisateur)
     }
   }
 }
@@ -243,14 +263,22 @@ async function afficherPortefeuilles() {
 const tbody = document.querySelector(".tableAction tbody")
 
 async function afficherActions(idportefeuille){
-  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/actions`);
+  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/actions`,{
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
   const data = await res.json();
   afficherListeActions(data);
 }
 
 
 async function afficherToutesLesActions(iduser){
-  const res = await fetch(`${API_URL}/utilisateur/${iduser}/actions`);
+  const res = await fetch(`${API_URL}/utilisateur/${iduser}/actions`,{
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
   const data = await res.json();
   afficherListeActions(data);
 }
@@ -276,7 +304,11 @@ async function afficherListeActions(data){
     tdPrixAchat.textContent = a.prixachataction;
 
     const tdPrixActuel = document.createElement("td");
-    const res = await fetch(`${API_URL}/quote/${a.symbol}`);
+    const res = await fetch(`${API_URL}/quote/${a.symbol}`, {
+      headers: {
+        "Authorization": `Bearer ${getToken()}`
+      }
+    });
     const dataPrix = await res.json();
     tdPrixActuel.textContent = dataPrix.prix.toFixed(2);
 
@@ -316,7 +348,11 @@ async function remplirGainTableau(data, tbody){
   let totalGainEuro = 0;
 
   const promises = data.actions.map(async (a, index) =>{
-    const res = await fetch(`${API_URL}/quote/${a.symbol}`);
+    const res = await fetch(`${API_URL}/quote/${a.symbol}`,{
+      headers: {
+        "Authorization": `Bearer ${getToken()}`
+      }
+    });
     if(!res.ok)return;
 
     const prixActuelData = await res.json();
@@ -329,6 +365,9 @@ async function remplirGainTableau(data, tbody){
     const fraisTotal = parseFloat(a.fraistotal || 0);
 
     console.log("Frais transaction total : " + fraisTotal)
+    if(a.symbol == "IPS.PA"){
+      console.log("Frais Ipsos : " + fraisTotal)
+    }
     const valeurAchat = (prixAchat * quantite) + fraisTotal;
     const valeurActuelle = prixActuel * quantite;
 
@@ -441,13 +480,15 @@ formAjoutPortefeuille.addEventListener("submit", async function (e) {
   const montant = parseFloat(e.target.montant.value) || 0;
   const datePremierVersement = e.target.datePremierVersement.value;
 
-  const iduser = localStorage.getItem("userId");
+  const utilisateur = await getUtilisateurActuel();
   
   const res = await fetch(`${API_URL}/portefeuille`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${getToken()}`},
     body: JSON.stringify({
-      idutilisateur: parseInt(iduser),
+      idutilisateur: parseInt(utilisateur.idutilisateur),
       nomportefeuille: nom,
       totalportefeuille: montant,
       dateouverture: datePremierVersement,
@@ -532,9 +573,13 @@ suppressionPortefeuille.addEventListener("click", async () => {
 // --- Ajout Action ---
 // --------------------
 async function chargerListePortefeuille(nomIdSelectPortefeuille) {
-  let iduser = localStorage.getItem("userId");
+  const utilisateur = await getUtilisateurActuel()
 
-  const res = await fetch(`${API_URL}/utilisateur/${iduser}/portefeuilles`);
+  const res = await fetch(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/portefeuilles`,{
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
   const data = await res.json() 
 
   let selectPortefeuilleAction = document.getElementById(nomIdSelectPortefeuille);
@@ -559,7 +604,11 @@ document.getElementById("nomAction").addEventListener("input", async (e) =>{
   const recherche = e.target.value.trim();
   if(recherche.length < 2) return;
 
-  const res = await fetch(`${API_URL}/rechercheActions?nom=${recherche}`);
+  const res = await fetch(`${API_URL}/rechercheActions?nom=${recherche}`, {
+      headers: {
+        "Authorization": `Bearer ${getToken()}`
+      }
+    });
   const data = await res.json();
   LISTE_RECHERCHE = data;
 
@@ -620,7 +669,11 @@ formAchatAction.addEventListener("submit", async function (e) {
 
   const res = await fetch(`${API_URL}/action`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: 
+    {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${getToken()}`
+    },
     body: JSON.stringify({
       nomaction: nomActionValue,
       symbol: symbolActionVAlue,
@@ -647,8 +700,8 @@ formAchatAction.addEventListener("submit", async function (e) {
     else
     {
       suppressionPortefeuille.style.display = "none";
-      const userId = localStorage.getItem("userId");
-      afficherToutesLesActions(userId);
+      const utilisateur = await getUtilisateurActuel()
+      afficherToutesLesActions(utilisateur.idutilisateur);
     }
   }
   else{
@@ -664,7 +717,11 @@ async function chargerActionLierPortefeuille() {
   let choixPortefeuille = document.getElementById("selectPortefeuilleActionVente").value;
   console.log("choixPortefeuille : " + choixPortefeuille)
 
-  const res = await fetch(`${API_URL}/portefeuille/${choixPortefeuille}/actions`);
+  const res = await fetch(`${API_URL}/portefeuille/${choixPortefeuille}/actions`,{
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
 
   if(!res.ok){
     alert("Créer d'abord un portefeuille")
@@ -745,8 +802,8 @@ formVenteAction.addEventListener("submit", async function (e) {
     }
     else
     {
-      const userId = localStorage.getItem("userId");
-      afficherToutesLesActions(userId);
+      const utilisateur = await getUtilisateurActuel()
+      afficherToutesLesActions(utilisateur.idutilisateur);
     }
   }
   else{
@@ -758,7 +815,11 @@ formVenteAction.addEventListener("submit", async function (e) {
 async function enregistrerTransaction(date, type, quantite, prix, idaction, idportefeuille) {
   const res = await fetch(`${API_URL}/transaction`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: 
+    {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${getToken()}`
+    },
     body: JSON.stringify({
       datetransaction: date,
       typetransaction: type,
