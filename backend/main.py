@@ -11,12 +11,15 @@ from dotenv import load_dotenv
 from ttf import TTF_ISIN_LIST
 from session import utilisateur_connecte_id
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from collections import defaultdict
+from dateutil.relativedelta import relativedelta
 import yfinance as yf
 import requests
 import logging
 import bcrypt
 import os
 import jwt
+import traceback
 import datetime
 
 
@@ -584,6 +587,109 @@ def get_cotation_actuelle(symbol: str, user: Utilisateur = Depends(getUtilisateu
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur récuperation de prix : {str(e)}")
+
+
+#=====================================================
+#=======================EVOLUTION=====================
+#=====================================================
+prix_cache = {}
+
+@app.get("/portefeuille/{id}/evolution")
+def get_portefeuille_evolution(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=id).first()
+    actions = db.query(Action).filter_by(idportefeuille=id, actionvendu=False).all()
+
+    if not actions:
+        return []
+
+    historique = defaultdict(lambda: {"valeur_marche": 0.0, "cout_achat": 0.0})
+    start_date = min(a.dateachataction for a in actions).replace(day=1)
+    end_date = datetime.datetime.today().date()
+
+    for a in actions:
+
+        key = (a.symbol, start_date, end_date)
+        if key in prix_cache:
+            prixs = prix_cache[key]
+        else:
+            prixs = yf.download(a.symbol, start=start_date, end=end_date, interval="1mo")
+            prix_cache[key] = prixs
+
+        montant_achat_total= float(a.prixachataction) * a.quantiteaction
+
+        for date_str, row in prixs.iterrows():
+            date = date_str.date().replace(day=1)
+            if date >= a.dateachataction:
+                close_price = float(row['Close'])
+                if isinstance(close_price, dict):
+                    close_price = close_price.get(a.symbol, 0)
+                valeur_actuelle = close_price * a.quantiteaction
+                historique[date]["valeur_marche"] += valeur_actuelle
+                historique[date]["cout_achat"] += montant_achat_total
+    
+    resultat = []
+    for date, valeurs in sorted(historique.items()):
+        achat = valeurs["cout_achat"]
+        valeur = valeurs["valeur_marche"]
+        if achat > 0:
+            performance = ((valeur - achat) / achat) * 100
+            resultat.append({
+                "date": date.strftime("%Y-%m"),
+                "performance": round(performance, 2)
+            })
+
+    return resultat
+
+
+@app.get("/utilisateur/{id}/evolution")
+def get_utilisateur_evolution(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
+    if not portefeuilles:
+        return []
+
+    historique = defaultdict(lambda: {"valeur_marche": 0.0, "cout_achat": 0.0})
+    end_date = datetime.datetime.today().date()
+
+    for p in portefeuilles:
+        actions = db.query(Action).filter_by(idportefeuille=p.idportefeuille, actionvendu=False).all()
+        if not actions:
+            continue
+
+        start_date = min(a.dateachataction for a in actions).replace(day=1)
+
+        for a in actions:
+            key = (a.symbol, start_date, end_date)
+            if key in prix_cache:
+                prixs = prix_cache[key]
+            else:
+                prixs = yf.download(a.symbol, start=start_date, end=end_date, interval="1mo")
+                prix_cache[key] = prixs
+
+            montant_achat_total= float(a.prixachataction) * a.quantiteaction
+
+            for date_str, row in prixs.iterrows():
+                date = date_str.date().replace(day=1)
+                if date >= a.dateachataction:
+                    close_price = float(row['Close'])
+                    if isinstance(close_price, dict):
+                        close_price = close_price.get(a.symbol, 0)
+                    valeur_actuelle = close_price * a.quantiteaction
+                    historique[date]["valeur_marche"] += valeur_actuelle
+                    historique[date]["cout_achat"] += montant_achat_total
+    
+    resultat = []
+    for date, valeurs in sorted(historique.items()):
+        achat = valeurs["cout_achat"]
+        valeur = valeurs["valeur_marche"]
+        if achat > 0:
+            performance = ((valeur - achat) / achat) * 100
+            resultat.append({
+                "date": date.strftime("%Y-%m"),
+                "performance": round(performance, 2)
+            })
+
+    return resultat
 
 
 

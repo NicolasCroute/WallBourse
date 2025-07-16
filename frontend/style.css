@@ -541,6 +541,13 @@ body{
   font-weight: bold;
 }
 
+/*====CARTE EVOLUTION=====*/
+
+#graphEvolution{
+  width: 100%;
+  height: 300px;
+}
+
 
 
 

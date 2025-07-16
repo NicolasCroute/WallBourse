@@ -237,6 +237,7 @@ async function afficherPortefeuilles() {
 
   suppressionPortefeuille.style.display = "none";
   afficherToutesLesActions(utilisateur.idutilisateur)
+  afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur)
 
   select.onchange = () =>{
     const idPortefeuilleActif = select.value
@@ -246,11 +247,13 @@ async function afficherPortefeuilles() {
     {
       suppressionPortefeuille.style.display = "block";
       afficherActions(idPortefeuilleActif)
+      afficherGraphiqueEvolution(idPortefeuilleActif)
     }
     else
     {
       suppressionPortefeuille.style.display = "none";
       afficherToutesLesActions(utilisateur.idutilisateur)
+      afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur)
     }
   }
 }
@@ -310,7 +313,12 @@ async function afficherListeActions(data){
       }
     });
     const dataPrix = await res.json();
-    tdPrixActuel.textContent = dataPrix.prix.toFixed(2);
+    if(dataPrix && typeof dataPrix.prix === "number"){
+      tdPrixActuel.textContent = dataPrix.prix.toFixed(2);
+    }
+    else{
+      tdPrixActuel.textContent = "-";
+    }
 
     const tdGainJourEuro = document.createElement("td");
     tdGainJourEuro.textContent = "0 €";
@@ -696,12 +704,14 @@ formAchatAction.addEventListener("submit", async function (e) {
     {
       suppressionPortefeuille.style.display = "block";
       afficherActions(parseInt(portefeuilleActifID));
+      afficherGraphiqueEvolution(parseInt(portefeuilleActifID));
     }
     else
     {
       suppressionPortefeuille.style.display = "none";
       const utilisateur = await getUtilisateurActuel()
       afficherToutesLesActions(utilisateur.idutilisateur);
+      afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur);
     }
   }
   else{
@@ -799,11 +809,13 @@ formVenteAction.addEventListener("submit", async function (e) {
     if(portefeuilleActifID)
     {
       afficherActions(parseInt(portefeuilleActifID));
+      afficherGraphiqueEvolution(parseInt(portefeuilleActifID));
     }
     else
     {
       const utilisateur = await getUtilisateurActuel()
       afficherToutesLesActions(utilisateur.idutilisateur);
+      afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur);
     }
   }
   else{
@@ -830,3 +842,156 @@ async function enregistrerTransaction(date, type, quantite, prix, idaction, idpo
     })
   });
 }
+
+
+// ------------------------
+// --- GRAPHIQUE ACTION ---
+// ------------------------
+
+let chartEvolution = null;
+
+async function afficherGraphiqueEvolution(idportefeuille) {
+  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/evolution`, {
+    headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+
+  if(!res.ok){
+    const err = await res.text();
+    console.error("Erreur API : ", err)
+    return;
+  }
+
+  const data = await res.json();
+  const labels = data.map(d => d.date);
+  const valeur = data.map(d => d.performance);
+
+  const ctx = document.getElementById("graphEvolution").getContext("2d");
+
+
+  if(chartEvolution){
+    chartEvolution.destroy();
+  }
+
+
+  chartEvolution = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      data: valeur,
+      tension: 0.5,
+      borderWidth: 2,
+      borderColor: '#0099FF',      // ligne visible
+      fill: false,
+      pointRadius:0
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y:{
+        ticks: {
+          callback: function(value){
+            return value + ' %'
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            return context.formattedValue + ' %';
+          }
+        }
+      }
+    },
+
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
+  },
+});
+}
+
+
+async function afficherGraphiqueEvolutionUtilisateur(idUtilisateur) {
+  const res = await fetch(`${API_URL}/utilisateur/${idUtilisateur}/evolution`, {
+    headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+
+  if(!res.ok){
+    const err = await res.text();
+    console.error("Erreur API : ", err)
+    return;
+  }
+
+  const data = await res.json();
+  const labels = data.map(d => d.date);
+  const valeur = data.map(d => d.performance);
+
+  const ctx = document.getElementById("graphEvolution").getContext("2d");
+
+
+  if(chartEvolution){
+    chartEvolution.destroy();
+  }
+
+
+  chartEvolution = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      data: valeur,
+      tension: 0.5,
+      borderWidth: 2,
+      borderColor: '#0099FF',      // ligne visible
+      fill: false,
+      pointRadius:0
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y:{
+        ticks: {
+          callback: function(value){
+            return value + ' %'
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            return context.formattedValue + ' %';
+          }
+        }
+      }
+    },
+
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
+  },
+});
+}
+
+
+
