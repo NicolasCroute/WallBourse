@@ -85,12 +85,20 @@
           </div>
 
           <div class="carte" id="box3">
-            <p class="petitText">Total</p>
+            <div class="petitText" id="totalPortefeuille">
+              <p>Total</p>
+              <p id="ajoutLiquidite">+</p>
+              <p id="retraitLiquidite">-</p>
+            </div>
             <p class="petitText" id="prixTotal"></p>
           </div>
 
           <div class="carte" id="box4">
             <p class="petitText">Evolution</p>
+            <div id="filtreEvolution">
+              <p class="petitText" id="filtreEvolutionJour">jour</p>
+              <p class="petitText" id="filtreEvolutionMois">mois</p>
+            </div>
             <canvas id="graphEvolution"></canvas>
           </div>
 

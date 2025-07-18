@@ -337,6 +337,46 @@ body{
   padding: 2vh 2vw;
 }
 
+/*===CARTE 3===*/
+#totalPortefeuille{
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+}
+
+#totalPortefeuille p{
+  margin: 0;
+  padding: 0;
+}
+
+#retraitLiquidite{
+  cursor: pointer;
+}
+
+#ajoutLiquidite{
+  cursor: pointer;
+}
+
+/*===CARTE 4===*/
+#filtreEvolution{
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-right: 10px;
+}
+
+#filtreEvolution p{
+  margin: 0px;
+  padding: 0px;
+  font-size: 0.8em;
+  cursor: pointer;
+  border: 0.5px solid #585858;
+  border-radius: 5px;
+  padding: 4px 6px;
+}
+
 
 
 /*===MODALE===*/

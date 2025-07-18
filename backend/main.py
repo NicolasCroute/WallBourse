@@ -501,17 +501,17 @@ EOD_API_KEY = os.getenv("EOD_API_KEY")
 
 @app.post("/transaction")
 def ajout_transaction(data: TransactionInput, db: Session = Depends(get_db)):
-    montantOrdre = data.quantitetransaction * data.prixtransaction
-
     portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
     plateforme = db.query(Plateforme).filter_by(idplateforme=portefeuille.idplateforme).first()
     
-    if plateforme.nomplateforme.lower() == "bourse direct":
-        frais = calculerFraisTransactionBourseDirecte(montantOrdre)
-    else:
-        frais = 0.0
+    frais = 0.0
 
     if data.typetransaction.upper() == "ACHAT":
+        montantOrdre = data.quantitetransaction * data.prixtransaction
+
+        if plateforme.nomplateforme.lower() == "bourse direct":
+            frais = calculerFraisTransactionBourseDirecte(montantOrdre)
+        
         action = db.query(Action).filter_by(idaction=data.idaction).first()
         if action:
             try:
@@ -595,7 +595,7 @@ def get_cotation_actuelle(symbol: str, user: Utilisateur = Depends(getUtilisateu
 prix_cache = {}
 
 @app.get("/portefeuille/{id}/evolution")
-def get_portefeuille_evolution(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+def get_portefeuille_evolution(id: int, interval: str = Query("1mo", enum=["1mo", "1d"]), db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
 
     portefeuille = db.query(Portefeuille).filter_by(idportefeuille=id).first()
     actions = db.query(Action).filter_by(idportefeuille=id, actionvendu=False).all()
@@ -609,17 +609,21 @@ def get_portefeuille_evolution(id: int, db: Session = Depends(get_db), user: Uti
 
     for a in actions:
 
-        key = (a.symbol, start_date, end_date)
+        key = (a.symbol, start_date, end_date, interval)
         if key in prix_cache:
             prixs = prix_cache[key]
         else:
-            prixs = yf.download(a.symbol, start=start_date, end=end_date, interval="1mo")
+            prixs = yf.download(a.symbol, start=start_date, end=end_date, interval=interval)
             prix_cache[key] = prixs
 
-        montant_achat_total= float(a.prixachataction) * a.quantiteaction
+        montant_achat_total= get_cout_achat_avec_frais(a, db)
 
         for date_str, row in prixs.iterrows():
-            date = date_str.date().replace(day=1)
+            if interval == "1mo":
+                date = date_str.date().replace(day=1)
+            else:
+                date = date_str.date()
+            
             if date >= a.dateachataction:
                 close_price = float(row['Close'])
                 if isinstance(close_price, dict):
@@ -635,7 +639,7 @@ def get_portefeuille_evolution(id: int, db: Session = Depends(get_db), user: Uti
         if achat > 0:
             performance = ((valeur - achat) / achat) * 100
             resultat.append({
-                "date": date.strftime("%Y-%m"),
+                "date": date.strftime("%Y-%m-%d") if interval == "1d" else date.strftime("%Y-%m"),
                 "performance": round(performance, 2)
             })
 
@@ -643,7 +647,7 @@ def get_portefeuille_evolution(id: int, db: Session = Depends(get_db), user: Uti
 
 
 @app.get("/utilisateur/{id}/evolution")
-def get_utilisateur_evolution(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+def get_utilisateur_evolution(id: int, interval: str = Query("1mo", enum=["1mo", "1d"]), db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
     portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
     if not portefeuilles:
         return []
@@ -659,17 +663,20 @@ def get_utilisateur_evolution(id: int, db: Session = Depends(get_db), user: Util
         start_date = min(a.dateachataction for a in actions).replace(day=1)
 
         for a in actions:
-            key = (a.symbol, start_date, end_date)
+            key = (a.symbol, start_date, end_date, interval)
             if key in prix_cache:
                 prixs = prix_cache[key]
             else:
-                prixs = yf.download(a.symbol, start=start_date, end=end_date, interval="1mo")
+                prixs = yf.download(a.symbol, start=start_date, end=end_date, interval=interval)
                 prix_cache[key] = prixs
 
-            montant_achat_total= float(a.prixachataction) * a.quantiteaction
+            montant_achat_total= get_cout_achat_avec_frais(a, db)
 
             for date_str, row in prixs.iterrows():
-                date = date_str.date().replace(day=1)
+                if interval == "1mo":
+                    date = date_str.date().replace(day=1)
+                else:
+                    date = date_str.date()
                 if date >= a.dateachataction:
                     close_price = float(row['Close'])
                     if isinstance(close_price, dict):
@@ -685,11 +692,28 @@ def get_utilisateur_evolution(id: int, db: Session = Depends(get_db), user: Util
         if achat > 0:
             performance = ((valeur - achat) / achat) * 100
             resultat.append({
-                "date": date.strftime("%Y-%m"),
+                "date": date.strftime("%Y-%m-%d") if interval == "1d" else date.strftime("%Y-%m"),
                 "performance": round(performance, 2)
             })
 
     return resultat
+
+
+
+#==================================================================
+#=======================METHODE GENERIQUE FRAIS====================
+#==================================================================
+
+def get_cout_achat_avec_frais(action: Action, db: Session) -> float:
+    montant_achat = float(action.prixachataction) * action.quantiteaction
+    transaction = db.query(Transaction).filter(Transaction.idaction == action.idaction).order_by(Transaction.datetransaction.desc()).first()
+    frais = float(transaction.fraistransaction) if transaction and transaction.fraistransaction else 0
+    
+    print("transaction : ", transaction.fraistransaction)
+    print("frais : ", frais)
+    return montant_achat + frais
+
+
 
 
 

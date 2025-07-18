@@ -697,7 +697,9 @@ formAchatAction.addEventListener("submit", async function (e) {
     const idaction = data.id;
     alert("Action ajouté ! ");
     const typeTransactionAchat = "ACHAT"
-    enregistrerTransaction(dateAchatActionValue, typeTransactionAchat, quantiteActionValue, montantInitActionValue, idaction, idportefeuilleValue);
+    
+    await enregistrerTransaction(dateAchatActionValue, typeTransactionAchat, quantiteActionValue, montantInitActionValue, idaction, idportefeuilleValue);
+    
     modalAchat.style.display = "none";
     
     if(portefeuilleActifID)
@@ -844,14 +846,95 @@ async function enregistrerTransaction(date, type, quantite, prix, idaction, idpo
 }
 
 
-// ------------------------
-// --- GRAPHIQUE ACTION ---
-// ------------------------
+// ---------------------------
+// --- GRAPHIQUE EVOLUTION ---
+// ---------------------------
 
 let chartEvolution = null;
 
-async function afficherGraphiqueEvolution(idportefeuille) {
-  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/evolution`, {
+async function afficherGraphiqueEvolution(idportefeuille, interval = "1mo") {
+  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/evolution?interval=${interval}`, {
+    headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+
+
+  if(!res.ok){
+    const err = await res.text();
+    console.error("Erreur API : ", err)
+    return;
+  }
+
+  const data = await res.json();
+  const labels = data.map(d => d.date);
+  const valeur = data.map(d => d.performance);
+
+  const ctx = document.getElementById("graphEvolution").getContext("2d");
+
+
+  if(chartEvolution){
+    chartEvolution.destroy();
+  }
+
+
+  chartEvolution = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      data: valeur,
+      tension: 0.5,
+      borderWidth: 2,
+      borderColor: '#0099FF',      // ligne visible
+      fill: false,
+      pointRadius:0
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y:{
+        ticks: {
+          callback: function(value){
+            return value + ' %'
+          }
+        }
+      },
+      x:{
+        ticks:{
+          display: false
+        },
+        grid: {
+          display: false
+        },
+      }
+    },
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(context) {
+            return context.formattedValue + ' %';
+          }
+        }
+      }
+    },
+
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
+  },
+});
+}
+
+
+async function afficherGraphiqueEvolutionUtilisateur(idUtilisateur, interval = "1mo") {
+  const res = await fetch(`${API_URL}/utilisateur/${idUtilisateur}/evolution?interval=${interval}`, {
     headers: { "Authorization": `Bearer ${getToken()}` }
   });
 
@@ -895,77 +978,13 @@ async function afficherGraphiqueEvolution(idportefeuille) {
             return value + ' %'
           }
         }
-      }
-    },
-    plugins: {
-      legend: {
-        display: false
       },
-      tooltip: {
-        enabled: true,
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          label: function(context) {
-            return context.formattedValue + ' %';
-          }
-        }
-      }
-    },
-
-    interaction: {
-      mode: 'index',
-      intersect: false
-    },
-  },
-});
-}
-
-
-async function afficherGraphiqueEvolutionUtilisateur(idUtilisateur) {
-  const res = await fetch(`${API_URL}/utilisateur/${idUtilisateur}/evolution`, {
-    headers: { "Authorization": `Bearer ${getToken()}` }
-  });
-
-  if(!res.ok){
-    const err = await res.text();
-    console.error("Erreur API : ", err)
-    return;
-  }
-
-  const data = await res.json();
-  const labels = data.map(d => d.date);
-  const valeur = data.map(d => d.performance);
-
-  const ctx = document.getElementById("graphEvolution").getContext("2d");
-
-
-  if(chartEvolution){
-    chartEvolution.destroy();
-  }
-
-
-  chartEvolution = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: labels,
-    datasets: [{
-      data: valeur,
-      tension: 0.5,
-      borderWidth: 2,
-      borderColor: '#0099FF',      // ligne visible
-      fill: false,
-      pointRadius:0
-    }]
-  },
-  options: {
-    responsive: true,
-    scales: {
-      y:{
-        ticks: {
-          callback: function(value){
-            return value + ' %'
-          }
+      x:{
+        grid: {
+          display: false
+        },
+        ticks:{
+          display: false
         }
       }
     },
@@ -993,5 +1012,36 @@ async function afficherGraphiqueEvolutionUtilisateur(idUtilisateur) {
 });
 }
 
+// --- Filtre Jour/Mois ---
 
+filtreEvolutionJour = document.getElementById("filtreEvolutionJour");
+filtreEvolutionMois = document.getElementById("filtreEvolutionMois");
+
+filtreEvolutionJour.addEventListener('click', async function (e) {
+  e.preventDefault();
+
+  const id = localStorage.getItem("portefeuilleActifID");
+  if (id){
+    afficherGraphiqueEvolution(id, "1d")
+  }
+  else{
+    const utilisateur = await getUtilisateurActuel()
+    afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur, interval = "1d")
+    console.log("Id user : ", utilisateur.idutilisateur)
+  }
+})
+
+filtreEvolutionMois.addEventListener('click', async function (e) {
+  e.preventDefault();
+
+  const id = localStorage.getItem("portefeuilleActifID");
+  if (id){
+    afficherGraphiqueEvolution(id, "1mo")
+  }
+  else{
+    const utilisateur = await getUtilisateurActuel()
+    afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur, interval = "1mo")
+  }
+    
+})
 
