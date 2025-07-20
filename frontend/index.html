@@ -65,76 +65,77 @@
             </div>
         </div>
       </div>
-      <div class="premiereSection">
-        <div class="overlay">
-          <div class="carte" id="box1">
-            <p class="petitText" id="nomPrenomUser"></p>
-            <p class="moyenText">PORTEFEUILLE</p>
-            <div id="selectionAjoutPortefeuille">
-              <select name="" class="moyenText" id="listePortefeuilles"></select>
-              <p class="moyenText" id="ajoutPortefeuille">+</p>
-              <p class="moyenText" id="suppressionPortefeuille">-</p>
+      <div class="conteneurSection">
+        <div class="premiereSection">
+          <div class="overlay">
+            <div class="carte" id="box1">
+              <p class="petitText" id="nomPrenomUser"></p>
+              <p class="moyenText">PORTEFEUILLE</p>
+              <div id="selectionAjoutPortefeuille">
+                <select name="" class="moyenText" id="listePortefeuilles"></select>
+                <p class="moyenText" id="ajoutPortefeuille">+</p>
+                <p class="moyenText" id="suppressionPortefeuille">-</p>
+              </div>
+              </select>
             </div>
-            </select>
-          </div>
 
-          <div class="carte" id="box2">
-            <p class="petitText">Valorisation</p>
-            <p class="txtValorisation" id="valorisationEuro"></p>
-            <p class="txtValorisation" id="valorisationPourcent"></p>
-          </div>
-
-          <div class="carte" id="box3">
-            <div class="petitText" id="totalPortefeuille">
-              <p>Total</p>
-              <p id="ajoutLiquidite">+</p>
-              <p id="retraitLiquidite">-</p>
+            <div class="carte" id="box2">
+              <p class="petitText">Valorisation</p>
+              <p class="txtValorisation" id="valorisationEuro"></p>
+              <p class="txtValorisation" id="valorisationPourcent"></p>
             </div>
-            <p class="petitText" id="prixTotal"></p>
-          </div>
 
-          <div class="carte" id="box4">
-            <p class="petitText">Evolution</p>
-            <div id="filtreEvolution">
-              <p class="petitText" id="filtreEvolutionJour">jour</p>
-              <p class="petitText" id="filtreEvolutionMois">mois</p>
+            <div class="carte" id="box3">
+              <div class="petitText" id="totalPortefeuille">
+                <p>Total</p>
+                <p id="gestionLiquidite">+/-</p>
+              </div>
+              <p class="petitText" id="prixTotal"></p>
             </div>
-            <canvas id="graphEvolution"></canvas>
-          </div>
 
-          <div class="carte" id="box5">
-            <p class="petitText">Réalisation de la semaine</p>
-          </div>
-          
-          <div class="carte" id="box6">
-            <p class="petitText">Performance</p>
-          </div>
+            <div class="carte" id="box4">
+              <p class="petitText">Evolution</p>
+              <div id="filtreEvolution">
+                <p class="petitText" id="filtreEvolutionJour">jour</p>
+                <p class="petitText" id="filtreEvolutionMois">mois</p>
+              </div>
+              <canvas id="graphEvolution"></canvas>
+            </div>
 
+            <div class="carte" id="box5">
+              <p class="petitText">Réalisation de la semaine</p>
+            </div>
+            
+            <div class="carte" id="box6">
+              <p class="petitText">Performance</p>
+            </div>
+
+          </div>
         </div>
-      </div>
 
-      <div class="deuxiemeSection" id="idDeuxiemeSection">
-        <h2 id="vosActions">Vos actions</h2>
-        <div id="achatVenteActions">
-          <p class="petitText" id="achatAction">Achat</p>
-          <p class="petitText" id="venteAction">Vente</p>
-        </div>
-        <div id="divTableauAjout">
-          <table class="tableAction">
-            <thead>
-              <tr>
-                <th>Nom action</th>
-                <th>Quantité</th>
-                <th>Prix Achat</th>
-                <th>Prix Actuel</th>
-                <th>Gain/jour (€)</th>
-                <th>Gain/jour (%)</th>
-                <th>Gain/total (€)</th>
-                <th>Gain/total (%)</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <div class="deuxiemeSection" id="idDeuxiemeSection">
+          <h2 id="vosActions">Vos actions</h2>
+          <div id="achatVenteActions">
+            <p class="petitText" id="achatAction">Achat</p>
+            <p class="petitText" id="venteAction">Vente</p>
+          </div>
+          <div id="divTableauAjout">
+            <table class="tableAction">
+              <thead>
+                <tr>
+                  <th>Nom action</th>
+                  <th>Quantité</th>
+                  <th>Prix Achat</th>
+                  <th>Prix Actuel</th>
+                  <th>Gain/jour (€)</th>
+                  <th>Gain/jour (%)</th>
+                  <th>Gain/total (€)</th>
+                  <th>Gain/total (%)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -144,14 +145,14 @@
     <div class="modal-content">
       <span class="fermerModal" id="fermerModalAjoutPortefeuille">&times;</span>
       <h2>Ajouter un portefeuille</h2>
-      <form id="formAjoutPortefeuille">
+      <form class="formModal" id="formAjoutPortefeuille">
         <select name="nomTypePortefeuille" id="selectTypePortefeuille" required></select>
         <select name="nomPlateforme" id="selectPlateforme" required></select>
         <input type="text" name="nom" placeholder="Nom du portefeuille" required>
         <input type="number" name="montant" placeholder="Montant initial (€)">
         <div>
           <p>Date du premier versement :</p>
-          <input type="date" name="datePremierVersement" required>
+          <input type="date" name="datePremierVersement" id="inputDatePremierVersement" required>
         </div>
         <button type="submit">Ajouter</button>
       </form>
@@ -163,7 +164,7 @@
     <div class="modal-content">
       <span class="fermerModal" id="fermerModalAchat">&times;</span>
       <h2>Ajouter une action</h2>
-      <form id="formAchatAction">
+      <form class="formModal" id="formAchatAction">
         <div>
           <p>Portefeuille d'achat :</p>
           <select id="selectPortefeuilleActionAchat" required>
@@ -174,7 +175,7 @@
 
         <input type="text" name="symbolAction" id="symbolAction" placeholder="Symbole (ex. AAPL)" readonly required>
         <input type="number" name="quantiteAction" placeholder="Quantité action" required>
-        <input type="date" name="dateAchatAction" placeholder="Date achat action" required>
+        <input type="date" name="dateAchatAction" placeholder="Date achat action"  id="inputDateAchat" required>
         <input type="number" step="0.001" name="montantInitAction" placeholder="Prix initial action (€)" required>
         <button type="submit">Ajouter</button>
       </form>
@@ -185,7 +186,7 @@
     <div class="modal-content">
       <span class="fermerModal" id="fermerModalVente">&times;</span>
       <h2>Vendre une action</h2>
-      <form id="formVenteAction">
+      <form class="formModal" id="formVenteAction">
         <div>
           <p>Portefeuille d'achat :</p>
           <select id="selectPortefeuilleActionVente" required>
@@ -197,10 +198,27 @@
           </select>
         </div>
         <input type="number" name="quantiteActionVente" placeholder="Quantité vendue" required>
-        <input type="date" name="dateVenteAction" placeholder="Date vente action" required>
+        <input type="date" name="dateVenteAction" placeholder="Date vente action"  id="inputDateVente" required>
         <input type="number" name="montantVenteAction" placeholder="Prix vente action (€)" required>
         <!--TODO : Frais vente ??-->
         <button type="submit">Vendre</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modalLiquidite">
+    <div class="modal-content">
+      <span class="fermerModal" id="fermerModalLiquidite">&times;</span>
+      <h2>Gestion des liquidités</h2>
+      <form class="formModal" id="formAjoutLiquidite">
+        <div>
+          <p>Date de l'opération :</p>
+          <input type="date" name="dateOperation" id="inputDateOperation" required>
+        </div>
+        <select name="nomTypePortefeuille" id="selectTypePortefeuilleLiquidite" required></select>
+        <select name="typeOperation" id="selectTypeOperation" required></select>
+        <input type="number" name="montantLiquidite" placeholder="Montant">
+        <button type="submit">Valider</button>
       </form>
     </div>
   </div>

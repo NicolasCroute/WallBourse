@@ -145,14 +145,17 @@ let sectionMenuDeroulant = document.getElementById("sectionMenuDeroulantId");
 let choixMenu = document.querySelectorAll(".choixMenu p");
 
 
-sectionMenuDeroulant.addEventListener("mouseenter", () =>{
-    accederMenu.classList.add("hidden");
-    menuDeroulantId.style.display = "block";
+accederMenu.addEventListener("click", (e) =>{
+  e.stopPropagation()
+  accederMenu.classList.add("hidden");
+  menuDeroulantId.style.display = "block";
 })
 
-sectionMenuDeroulant.addEventListener("mouseleave", () =>{
+document.addEventListener("click", (e) => {
+  if (!sectionMenuDeroulant.contains(e.target)){
     accederMenu.classList.remove("hidden");
     menuDeroulantId.style.display = "none";
+  }
 })
 
 choixMenu.forEach(element => {
@@ -237,7 +240,9 @@ async function afficherPortefeuilles() {
 
   suppressionPortefeuille.style.display = "none";
   afficherToutesLesActions(utilisateur.idutilisateur)
-  afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur)
+  
+  const interval = localStorage.getItem("interval");
+  afficherGraphiqueEvolutionGenerique(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/evolution?interval=${interval}`)
 
   select.onchange = () =>{
     const idPortefeuilleActif = select.value
@@ -247,13 +252,17 @@ async function afficherPortefeuilles() {
     {
       suppressionPortefeuille.style.display = "block";
       afficherActions(idPortefeuilleActif)
-      afficherGraphiqueEvolution(idPortefeuilleActif)
+
+      const interval = localStorage.getItem("interval");
+      afficherGraphiqueEvolutionGenerique(`${API_URL}/portefeuille/${idPortefeuilleActif}/evolution?interval=${interval}`)
     }
     else
     {
       suppressionPortefeuille.style.display = "none";
       afficherToutesLesActions(utilisateur.idutilisateur)
-      afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur)
+
+      const interval = localStorage.getItem("interval");
+      afficherGraphiqueEvolutionGenerique(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/evolution?interval=${interval}`)
     }
   }
 }
@@ -466,6 +475,7 @@ const formAjoutPortefeuille = document.getElementById("formAjoutPortefeuille");
 
 btnAjoutPortefeuille.addEventListener("click", function (e) {
   chargerOption();
+  dateJourDefault("inputDatePremierVersement");
   modal.style.display = "block";
 });
 
@@ -650,6 +660,7 @@ const formAchatAction = document.getElementById("formAchatAction");
 
 btnAchatAction.addEventListener("click", function (e) {
   chargerListePortefeuille("selectPortefeuilleActionAchat");
+  dateJourDefault("inputDateAchat");
   modalAchat.style.display = "block";
 });
 
@@ -706,14 +717,19 @@ formAchatAction.addEventListener("submit", async function (e) {
     {
       suppressionPortefeuille.style.display = "block";
       afficherActions(parseInt(portefeuilleActifID));
-      afficherGraphiqueEvolution(parseInt(portefeuilleActifID));
+
+      const interval = localStorage.getItem("interval");
+      afficherGraphiqueEvolutionGenerique(`${API_URL}/portefeuille/${parseInt(portefeuilleActifID)}/evolution?interval=${interval}`)
     }
     else
     {
       suppressionPortefeuille.style.display = "none";
       const utilisateur = await getUtilisateurActuel()
       afficherToutesLesActions(utilisateur.idutilisateur);
-      afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur);
+
+      const interval = localStorage.getItem("interval");
+      afficherGraphiqueEvolutionGenerique(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/evolution?interval=${interval}`)
+
     }
   }
   else{
@@ -763,6 +779,7 @@ const formVenteAction = document.getElementById("formVenteAction");
 btnVenteAction.addEventListener("click", async function (e) {
   await chargerListePortefeuille("selectPortefeuilleActionVente");
   chargerActionLierPortefeuille();
+  dateJourDefault("inputDateVente");
   modalVente.style.display = "block";
 });
 
@@ -807,17 +824,22 @@ formVenteAction.addEventListener("submit", async function (e) {
     await enregistrerTransaction(dateVente, "VENTE", quantite, prixVente, idaction, idportefeuilleValue);
 
     modalVente.style.display = "none";
+
     
     if(portefeuilleActifID)
     {
       afficherActions(parseInt(portefeuilleActifID));
-      afficherGraphiqueEvolution(parseInt(portefeuilleActifID));
+
+      const interval = localStorage.getItem("interval");
+      afficherGraphiqueEvolutionGenerique(`${API_URL}/portefeuille/${parseInt(portefeuilleActifID)}/evolution?interval=${interval}`) 
     }
     else
     {
       const utilisateur = await getUtilisateurActuel()
       afficherToutesLesActions(utilisateur.idutilisateur);
-      afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur);
+
+      const interval = localStorage.getItem("interval");
+      afficherGraphiqueEvolutionGenerique(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/evolution?interval=${interval}`)
     }
   }
   else{
@@ -852,8 +874,8 @@ async function enregistrerTransaction(date, type, quantite, prix, idaction, idpo
 
 let chartEvolution = null;
 
-async function afficherGraphiqueEvolution(idportefeuille, interval = "1mo") {
-  const res = await fetch(`${API_URL}/portefeuille/${idportefeuille}/evolution?interval=${interval}`, {
+async function afficherGraphiqueEvolutionGenerique(url) {
+  const res = await fetch(url, {
     headers: { "Authorization": `Bearer ${getToken()}` }
   });
 
@@ -870,26 +892,19 @@ async function afficherGraphiqueEvolution(idportefeuille, interval = "1mo") {
 
   const ctx = document.getElementById("graphEvolution").getContext("2d");
 
-
-  if(chartEvolution){
-    chartEvolution.destroy();
-  }
-
-
-  chartEvolution = new Chart(ctx, {
-  type: 'line',
-  data: {
+  const chartData = {
     labels: labels,
     datasets: [{
       data: valeur,
       tension: 0.5,
       borderWidth: 2,
-      borderColor: '#0099FF',      // ligne visible
+      borderColor: '#0099FF',
       fill: false,
       pointRadius:0
     }]
-  },
-  options: {
+  };
+
+  const chartOptions = {
     responsive: true,
     scales: {
       y:{
@@ -903,7 +918,7 @@ async function afficherGraphiqueEvolution(idportefeuille, interval = "1mo") {
         ticks:{
           display: false
         },
-        grid: {
+          grid: {
           display: false
         },
       }
@@ -923,93 +938,37 @@ async function afficherGraphiqueEvolution(idportefeuille, interval = "1mo") {
         }
       }
     },
-
     interaction: {
       mode: 'index',
       intersect: false
-    },
-  },
-});
+    }
+  }
+
+  if(chartEvolution){
+    chartEvolution.data = chartData;
+    chartEvolution.option = chartOptions;
+    chartEvolution.update();
+  }
+  else{
+    chartEvolution = new Chart(ctx, {
+      type: 'line',
+      data: chartData,
+      options: chartOptions
+    });
+  }
 }
 
+async function chargerGraphiqueSelonFiltre(interval) {
+  const idportefeuille = localStorage.getItem("portefeuilleActifID");
+  console.log("ID portefeuile : ddd" , idportefeuille)
 
-async function afficherGraphiqueEvolutionUtilisateur(idUtilisateur, interval = "1mo") {
-  const res = await fetch(`${API_URL}/utilisateur/${idUtilisateur}/evolution?interval=${interval}`, {
-    headers: { "Authorization": `Bearer ${getToken()}` }
-  });
-
-  if(!res.ok){
-    const err = await res.text();
-    console.error("Erreur API : ", err)
-    return;
+  if (idportefeuille){
+    await afficherGraphiqueEvolutionGenerique(`${API_URL}/portefeuille/${idportefeuille}/evolution?interval=${interval}`)
   }
-
-  const data = await res.json();
-  const labels = data.map(d => d.date);
-  const valeur = data.map(d => d.performance);
-
-  const ctx = document.getElementById("graphEvolution").getContext("2d");
-
-
-  if(chartEvolution){
-    chartEvolution.destroy();
+  else {
+    const utilisateur = await getUtilisateurActuel()
+    await afficherGraphiqueEvolutionGenerique(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/evolution?interval=${interval}`);
   }
-
-
-  chartEvolution = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: labels,
-    datasets: [{
-      data: valeur,
-      tension: 0.5,
-      borderWidth: 2,
-      borderColor: '#0099FF',      // ligne visible
-      fill: false,
-      pointRadius:0
-    }]
-  },
-  options: {
-    responsive: true,
-    scales: {
-      y:{
-        ticks: {
-          callback: function(value){
-            return value + ' %'
-          }
-        }
-      },
-      x:{
-        grid: {
-          display: false
-        },
-        ticks:{
-          display: false
-        }
-      }
-    },
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        enabled: true,
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          label: function(context) {
-            return context.formattedValue + ' %';
-          }
-        }
-      }
-    },
-
-    interaction: {
-      mode: 'index',
-      intersect: false
-    },
-  },
-});
 }
 
 // --- Filtre Jour/Mois ---
@@ -1017,31 +976,117 @@ async function afficherGraphiqueEvolutionUtilisateur(idUtilisateur, interval = "
 filtreEvolutionJour = document.getElementById("filtreEvolutionJour");
 filtreEvolutionMois = document.getElementById("filtreEvolutionMois");
 
-filtreEvolutionJour.addEventListener('click', async function (e) {
+filtreEvolutionJour.addEventListener('click', function (e) {
   e.preventDefault();
-
-  const id = localStorage.getItem("portefeuilleActifID");
-  if (id){
-    afficherGraphiqueEvolution(id, "1d")
-  }
-  else{
-    const utilisateur = await getUtilisateurActuel()
-    afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur, interval = "1d")
-    console.log("Id user : ", utilisateur.idutilisateur)
-  }
+  localStorage.setItem("interval", "1d")
+  chargerGraphiqueSelonFiltre("1d");
 })
 
-filtreEvolutionMois.addEventListener('click', async function (e) {
+filtreEvolutionMois.addEventListener('click', function (e) {
+  e.preventDefault();
+  localStorage.setItem("interval", "1mo")
+  chargerGraphiqueSelonFiltre("1mo");
+})
+
+
+
+// -------------------------------
+// --- AJOUT/RETRAIT LIQUIDITE ---
+// -------------------------------
+
+
+const gestionLiquidite = document.getElementById("gestionLiquidite");
+
+const modalLiquidite = document.getElementById("modalLiquidite");
+const fermerModalLiquidite = document.getElementById("fermerModalLiquidite");
+
+const formAjoutLiquidite = document.getElementById("formAjoutLiquidite");
+
+
+gestionLiquidite.addEventListener("click", () =>{
+  chargerListePortefeuille("selectTypePortefeuilleLiquidite");
+  chargerListeTypeOperation();
+  dateJourDefault("inputDateOperation");
+
+  modalLiquidite.style.display = "block"
+})
+
+fermerModalLiquidite.addEventListener("click", function (e) {
+  modalLiquidite.style.display = "none";
+});
+
+window.addEventListener("click", function (e) {
+  if (e.target === modalLiquidite) {
+    modalLiquidite.style.display = "none";
+  }
+});
+
+function chargerListeTypeOperation() {
+  const selectTypeOperation = document.getElementById("selectTypeOperation");
+  selectTypeOperation.innerHTML = "";
+
+  const options = ["Virement entrant","Virement sortant"];
+
+  options.forEach(opt =>{
+    const option = document.createElement("option");
+    option.value = opt;
+    option.textContent = opt;
+    selectTypeOperation.appendChild(option);
+  })
+}
+
+function dateJourDefault(inputDateParametre) {
+  const inputDate = document.getElementById(inputDateParametre);
+  inputDate.value = new Date().toISOString().split('T')[0];
+}
+
+
+formAjoutLiquidite.addEventListener("submit", async function (e) {
   e.preventDefault();
 
-  const id = localStorage.getItem("portefeuilleActifID");
-  if (id){
-    afficherGraphiqueEvolution(id, "1mo")
+  let idportefeuilleValue = parseInt(document.getElementById("selectTypePortefeuilleLiquidite").value)
+  let selectTypeOperation = e.target.typeOperation.value === "Virement entrant" ? "entrant" : "sortant";
+  let montant = e.target.montantLiquidite.value;
+  let date = e.target.dateOperation.value;
+
+  if(isNaN(montant) || montant <= 0){
+    alert("veuillez rentrer un montant valide");
+    return
+  }
+
+
+  const res = await fetch(`${API_URL}/liquidite`, {
+    method: "POST",
+    headers: 
+    {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${getToken()}`
+    },
+    body: JSON.stringify({
+      dateliquidite: date,
+      montantliquidite: montant,
+      typeliquidite: selectTypeOperation,
+      idportefeuille: idportefeuilleValue
+    })
+  });
+
+  if(res.ok){
+    const data = await res.json();
+    alert("Liquidité enregistrée !");
+    modalLiquidite.style.display = "none";
+
+    const total = parseFloat(data.totalportefeuille)
+    console.log(total)
+    if(!isNaN(total)){
+      document.getElementById("prixTotal").textContent = total.toFixed(2) + " €";
+    }
+    else{
+      console.warn("Valeur total du portefeuille non définie");
+    }
   }
   else{
-    const utilisateur = await getUtilisateurActuel()
-    afficherGraphiqueEvolutionUtilisateur(utilisateur.idutilisateur, interval = "1mo")
+    const err = await res.json();
+    alert("Erreur : " + (err.detail || "lors de l'enregistrement"));
   }
-    
 })
 
