@@ -61,3 +61,13 @@ class Transaction(Base):
     prixtransaction = Column(DECIMAL, nullable=False)
     fraistransaction = Column(DECIMAL, nullable=False)
     idaction = Column(Integer, ForeignKey("action.idaction"), nullable=False)
+
+
+class Liquidite(Base):
+    __tablename__ = "liquidite"
+    
+    idliquidite = Column(Integer, primary_key=True, index=True)
+    dateliquidite = Column(Date, nullable=False)
+    montantliquidite = Column(DECIMAL, nullable=False)
+    typeliquidite = Column(String, nullable=False)
+    idportefeuille = Column(Integer, ForeignKey("portefeuille.idportefeuille"), nullable=False)

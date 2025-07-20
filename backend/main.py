@@ -3,11 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, create_engine, func, desc
 from database import SessionLocal, engine, Base
-from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Transaction
+from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Transaction, Liquidite
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from datetime import datetime, date
 from dotenv import load_dotenv
+from decimal import Decimal
 from ttf import TTF_ISIN_LIST
 from session import utilisateur_connecte_id
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -36,7 +37,7 @@ app = FastAPI()
 # Autoriser les appels
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # à adapter pour Vercel plus tard
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -714,8 +715,59 @@ def get_cout_achat_avec_frais(action: Action, db: Session) -> float:
     return montant_achat + frais
 
 
+#====================================================
+#=======================LIQUIDITE====================
+#====================================================
+
+@app.get("/liquidite")
+def get_liquidite(db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
+    liquidite = db.query(Liquidite).all()
+
+    return[{
+        "idliquidite": l.idliquidite,
+        "dateliquidite": l.dateliquidite,
+        "montantliquidite": l.montantliquidite,
+        "typeliquidite": l.typeliquidite,
+    }
+    for l in liquidite]
 
 
+
+class LiquiditeInput(BaseModel):
+    dateliquidite: date
+    montantliquidite: float
+    typeliquidite: str
+    idportefeuille: int
+
+@app.post("/liquidite")
+def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
+    montant = Decimal(str(data.montantliquidite))
+    if data.typeliquidite == "sortant":
+        montant *= -1
+    
+    liquidite = Liquidite(
+        dateliquidite=data.dateliquidite,
+        montantliquidite=data.montantliquidite,
+        typeliquidite=data.typeliquidite,
+        idportefeuille=data.idportefeuille
+    )
+    db.add(liquidite)
+
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
+    if portefeuille:
+        portefeuille.totalportefeuille = (portefeuille.totalportefeuille or 0) + montant
+    else:
+        raise HTTPException(status_code=404, detail="Portefeuille introuvable")
+
+    db.commit()
+
+    return {"message":"Opération enregistrée", "totalportefeuille": float(portefeuille.totalportefeuille)}
+
+
+@app.get("/portefeuille/{id}/liquidite")
+def get_portefeuille_liquidite(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
+    total = db.query(func.sum(Liquidite.montantliquidite)).filter_by(idportefeuille=id).scalar()
+    return {"total": float(total or 0)}
 
 #====================================================
 #=======================CONNEXION====================
