@@ -1075,13 +1075,31 @@ formAjoutLiquidite.addEventListener("submit", async function (e) {
     alert("Liquidité enregistrée !");
     modalLiquidite.style.display = "none";
 
+    const idPortefeuilleActif = localStorage.getItem("portefeuilleActifID")
+
     const total = parseFloat(data.totalportefeuille)
     console.log(total)
-    if(!isNaN(total)){
-      document.getElementById("prixTotal").textContent = total.toFixed(2) + " €";
+
+    if(parseInt(idPortefeuilleActif) === idportefeuilleValue){
+
+      if(!isNaN(total)){
+        document.getElementById("prixTotal").textContent = total.toFixed(2) + " €";
+      }
+      else{
+        console.warn("Valeur total du portefeuille non définie");
+      }
     }
-    else{
-      console.warn("Valeur total du portefeuille non définie");
+    else if (idPortefeuilleActif === "") {
+      const utilisateur = await getUtilisateurActuel();
+      const res = await fetch(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/actions`,{
+        headers: {
+          "Authorization": `Bearer ${getToken()}`
+        }
+      });
+
+      const data = await res.json();
+      const prixTotal = document.getElementById("prixTotal");
+      prixTotal.innerHTML = parseFloat(data.totalportefeuille).toFixed(2) + " €"
     }
   }
   else{

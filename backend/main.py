@@ -764,10 +764,8 @@ def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: U
     return {"message":"Opération enregistrée", "totalportefeuille": float(portefeuille.totalportefeuille)}
 
 
-@app.get("/portefeuille/{id}/liquidite")
-def get_portefeuille_liquidite(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
-    total = db.query(func.sum(Liquidite.montantliquidite)).filter_by(idportefeuille=id).scalar()
-    return {"total": float(total or 0)}
+
+
 
 #====================================================
 #=======================CONNEXION====================
