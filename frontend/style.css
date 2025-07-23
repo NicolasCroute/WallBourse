@@ -413,6 +413,34 @@ body{
 }
 
 
+/*=====Table action=====*/
+
+#divTableauAjout{
+  display: flex;
+  justify-content: center;
+}
+
+.tableAction{
+  border-collapse: collapse;
+  margin: 25px 0;
+  font-size: 18px;
+  min-width: 400px;
+  width: 90%;
+  text-align: left;
+}
+
+.tableAction th, .tableAction td{
+  padding: 12px 15px;
+  border: 1px solid #0099FF;
+}
+
+.tableAction thead tr{
+  background-color: #0099FF;
+  color: white;
+  text-align: center;
+  font-weight: bold;
+}
+
 
 
 
@@ -534,35 +562,6 @@ body{
 
 
 
-/*=====Table action=====*/
-
-#divTableauAjout{
-  display: flex;
-  justify-content: center;
-}
-
-.tableAction{
-  border-collapse: collapse;
-  margin: 25px 0;
-  font-size: 18px;
-  min-width: 400px;
-  width: 90%;
-  text-align: left;
-}
-
-.tableAction th, .tableAction td{
-  padding: 12px 15px;
-  border: 1px solid #0099FF;
-}
-
-.tableAction thead tr{
-  background-color: #0099FF;
-  color: white;
-  text-align: center;
-  font-weight: bold;
-}
-
-
 
 
 
@@ -648,6 +647,28 @@ body{
     grid-column-end: 3;
     grid-row-start: 7;
     grid-row-end: 8;
+  }
+
+  .tableAction {
+    font-size: 9px;
+    min-width: 0;
+  }
+
+  .tableAction th:nth-child(2),
+  .tableAction th:nth-child(3),
+  .tableAction th:nth-child(4),
+  .tableAction td:nth-child(2),
+  .tableAction td:nth-child(3),
+  .tableAction td:nth-child(4) {
+    display: none;
+  }
+
+  .tableAction td{
+    padding: 2px 4px;
+  }
+
+  .tableAction th{
+    padding: 2px 4px;
   }
 }
 
