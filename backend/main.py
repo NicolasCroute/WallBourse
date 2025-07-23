@@ -378,6 +378,13 @@ class ActionInput(BaseModel):
 
 @app.post("/action")
 def ajout_action(data: ActionInput, db: Session = Depends(get_db)):
+    #logique verif si fond necessaire :
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
+    montant_achat = Decimal(str(data.quantiteaction)) * Decimal(str(data.prixachataction))
+    if (portefeuille.especeportefeuille or Decimal("0")) < montant_achat:
+        HTTPException(status_code=400, detail="Fonds insuffisant pour cet achat")
+    
+    portefeuille.especeportefeuille = portefeuille.especeportefeuille - montant_achat
 
     action_existante = db.query(Action).filter(
         and_(
@@ -428,7 +435,7 @@ def ajout_action(data: ActionInput, db: Session = Depends(get_db)):
 
 #====Suppression action=====
 @app.delete("/action/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def vendre_action(id: int, quantite: int = Query(..., gt=0), db: Session = Depends(get_db)):
+def vendre_action(id: int, quantite: int = Query(..., gt=0), prix_vente: float = Query(...), db: Session = Depends(get_db)):
     action = db.query(Action).filter_by(idaction=id).first()
     if not action:
         raise HTTPException(status_code=404, detail="Action non trouvé")
@@ -436,6 +443,10 @@ def vendre_action(id: int, quantite: int = Query(..., gt=0), db: Session = Depen
     if quantite > action.quantiteaction:
         raise HTTPException(status_code=400, detail="Quantité vendu supperieur à celle possedée")
     
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=action.idportefeuille).first()
+    montant_vente = quantite * prix_vente
+    portefeuille.especeportefeuille = (portefeuille.especeportefeuille or 0) + montant_vente
+
     action.quantiteaction -= quantite
 
     if action.quantiteaction == 0:
@@ -742,8 +753,17 @@ class LiquiditeInput(BaseModel):
 @app.post("/liquidite")
 def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
     montant = Decimal(str(data.montantliquidite))
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
+    if not portefeuille:
+        raise HTTPException(status_code=404, detail="Portefeuille introuvable")
+
     if data.typeliquidite == "sortant":
-        montant *= -1
+        montant = -montant
+
+        if portefeuille.especeportefeuille + montant < 0:
+            raise HTTPException(status_code=400, detail="Fond insufisant pour le retrait")
+    
+    portefeuille.especeportefeuille = (portefeuille.especeportefeuille or 0) + montant
     
     liquidite = Liquidite(
         dateliquidite=data.dateliquidite,
@@ -752,17 +772,73 @@ def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: U
         idportefeuille=data.idportefeuille
     )
     db.add(liquidite)
-
-    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
-    if portefeuille:
-        portefeuille.totalportefeuille = (portefeuille.totalportefeuille or 0) + montant
-    else:
-        raise HTTPException(status_code=404, detail="Portefeuille introuvable")
-
     db.commit()
 
-    return {"message":"Opération enregistrée", "totalportefeuille": float(portefeuille.totalportefeuille)}
+    return {"message":"Opération enregistrée", "especeportefeuille": float(portefeuille.especeportefeuille)}
 
+
+@app.get("/portefeuille/{id}/etat")
+def get_etat_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    portefeuille = db.query(Portefeuille).filter_by(idportefeuille=id).first()
+    if not portefeuille:
+        raise HTTPException(status_code=404, detail="Portefeuille non trouvé")
+    return calcul_etat_portefeuille(portefeuille, db)
+
+@app.get("/utilisateur/{id}/etat-global")
+def get_etat_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
+    if not portefeuilles:
+        raise HTTPException(status_code=404, detail="Aucun portefeulle trouvé")
+    
+    total_epece = 0
+    total_valeur_actions = 0
+    total_investi = 0
+
+    for p in portefeuilles:
+        etat = calcul_etat_portefeuille(p, db)
+        total_epece += etat["espece"]
+        total_valeur_actions += etat["valeurActions"]
+        total_investi += etat["totalInvesti"]
+    
+    
+    total_portefeuille = total_epece + total_valeur_actions
+
+    return{
+        "espece": round(total_epece, 2),
+        "valeurActions": round(total_valeur_actions, 2),
+        "totalPortefeuille": round(total_portefeuille, 2),
+        "totalInvesti": round(total_investi, 2)
+    }
+    
+
+def calcul_etat_portefeuille(portefeuille, db):
+    actions = db.query(Action).filter_by(idportefeuille=portefeuille.idportefeuille, actionvendu=False).all()
+    valeur_actions = 0
+    total_pru = 0
+
+    for a in actions:
+        try:
+            import yfinance as yf
+            stock = yf.Ticker(a.symbol)
+            info = stock.info
+            prix_marche = info.get("regularMarketPrice", 0) or 0
+        except:
+            prix_marche = 0
+
+        montant_achat_total = get_cout_achat_avec_frais(a, db)
+        valeur_actuelle = prix_marche * a.quantiteaction
+        valeur_actions += valeur_actuelle
+        total_pru += montant_achat_total
+
+    especeportefeuille = float(portefeuille.especeportefeuille or 0)
+    total_portefeuille = especeportefeuille + valeur_actions
+
+    return {
+        "espece": round(especeportefeuille, 2),
+        "valeurActions": round(valeur_actions, 2),
+        "totalPortefeuille": round(total_portefeuille, 2),
+        "totalInvesti": round(total_pru, 2)
+    }
 
 
 

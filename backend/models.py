@@ -23,6 +23,7 @@ class Portefeuille(Base):
     idtypeportefeuille = Column(Integer, ForeignKey("typeportefeuille.idtypeportefeuille"), nullable=False)
     idplateforme = Column(Integer, ForeignKey("plateforme.idplateforme"), nullable=False)
     idutilisateur = Column(Integer, ForeignKey("utilisateur.idutilisateur"), nullable=False)
+    especeportefeuille = Column(DECIMAL, default=0)
 
 class Action(Base):
     __tablename__ = "action"

@@ -282,6 +282,19 @@ async function afficherActions(idportefeuille){
   });
   const data = await res.json();
   afficherListeActions(data);
+
+  const resEtat = await fetch(`${API_URL}/portefeuille/${idportefeuille}/etat`, {
+    headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+  if(resEtat.ok){
+    const etat = await resEtat.json();
+    document.getElementById("prixTotal").innerHTML = etat.totalPortefeuille.toFixed(2) + " €";
+    document.getElementById("especePortefeuille").innerHTML = "Espèces : " + etat.espece.toFixed(2) + " €";
+    document.getElementById("titrePortefeuille").innerHTML = "Titres : " + etat.valeurActions.toFixed(2) + " €";
+  }
+  else{
+    document.getElementById("prixTotal").innerHTML = "N/A";
+  }
 }
 
 
@@ -293,12 +306,22 @@ async function afficherToutesLesActions(iduser){
   });
   const data = await res.json();
   afficherListeActions(data);
+
+  const resEtat = await fetch(`${API_URL}/utilisateur/${iduser}/etat-global`, {
+    headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+  if(resEtat.ok){
+    const etat = await resEtat.json();
+    document.getElementById("prixTotal").innerHTML = etat.totalPortefeuille.toFixed(2) + " €";
+    document.getElementById("especePortefeuille").innerHTML = "Espèces : " + etat.espece.toFixed(2) + " €";
+    document.getElementById("titrePortefeuille").innerHTML = "Titres : " + etat.valeurActions.toFixed(2) + " €";
+  }
+  else{
+    document.getElementById("prixTotal").innerHTML = "N/A";
+  }
 }
 
 async function afficherListeActions(data){
-  //---Prix total---
-  const prixTotal = document.getElementById("prixTotal");
-  prixTotal.innerHTML = parseFloat(data.totalportefeuille).toFixed(2) + " €"
 
   //---Tableau---
   tbody.innerHTML = "";
@@ -815,7 +838,7 @@ formVenteAction.addEventListener("submit", async function (e) {
   const confirmation = confirm("Voulez-vous vraiment vendre cette action ?")
   if(!confirmation) return;
 
-  const res = await fetch(`${API_URL}/action/${idaction}?quantite=${quantite}`, {
+  const res = await fetch(`${API_URL}/action/${idaction}?quantite=${quantite}&prix_vente=${prixVente}`, {
     method: "DELETE",
   });
 
@@ -1071,35 +1094,17 @@ formAjoutLiquidite.addEventListener("submit", async function (e) {
   });
 
   if(res.ok){
-    const data = await res.json();
     alert("Liquidité enregistrée !");
     modalLiquidite.style.display = "none";
 
-    const idPortefeuilleActif = localStorage.getItem("portefeuilleActifID")
-
-    const total = parseFloat(data.totalportefeuille)
-    console.log(total)
-
-    if(parseInt(idPortefeuilleActif) === idportefeuilleValue){
-
-      if(!isNaN(total)){
-        document.getElementById("prixTotal").textContent = total.toFixed(2) + " €";
-      }
-      else{
-        console.warn("Valeur total du portefeuille non définie");
-      }
+    // Recharge l'état du portefeuille global affiché
+    const idPortefeuilleActif = localStorage.getItem("portefeuilleActifID");
+    if (idPortefeuilleActif) {
+      await afficherEtatPortefeuille(parseInt(idPortefeuilleActif));
     }
-    else if (idPortefeuilleActif === "") {
-      const utilisateur = await getUtilisateurActuel();
-      const res = await fetch(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/actions`,{
-        headers: {
-          "Authorization": `Bearer ${getToken()}`
-        }
-      });
-
-      const data = await res.json();
-      const prixTotal = document.getElementById("prixTotal");
-      prixTotal.innerHTML = parseFloat(data.totalportefeuille).toFixed(2) + " €"
+    else{
+      const utilisateur = await getUtilisateurActuel()
+      await afficherEtatGlobalPortefeuille(utilisateur.idutilisateur)
     }
   }
   else{
@@ -1108,3 +1113,30 @@ formAjoutLiquidite.addEventListener("submit", async function (e) {
   }
 })
 
+async function afficherEtatPortefeuille(id) {
+  const res = await fetch(`${API_URL}/portefeuille/${id}/etat`, {
+      headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+  if (!res.ok) {
+    alert("Erreur lors du chargement de l’état du portefeuille");
+    return;
+  }
+  const data = await res.json();
+  document.getElementById("prixTotal").textContent = data.totalPortefeuille.toFixed(2) + " €";
+  document.getElementById("especePortefeuille").innerHTML = "Espèces : " + data.espece.toFixed(2) + " €";
+  document.getElementById("titrePortefeuille").innerHTML = "Titres : " + data.valeurActions.toFixed(2) + " €";
+}
+
+async function afficherEtatGlobalPortefeuille(id) {
+  const res = await fetch(`${API_URL}/utilisateur/${id}/etat-global`, {
+      headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+  if (!res.ok) {
+      alert("Erreur lors du chargement de l’état du portefeuille");
+      return;
+  }
+  const data = await res.json();
+  document.getElementById("prixTotal").textContent = data.totalPortefeuille.toFixed(2) + " €";
+  document.getElementById("especePortefeuille").innerHTML = "Espèces : " + data.espece.toFixed(2) + " €";
+  document.getElementById("titrePortefeuille").innerHTML = "Titres : " + data.valeurActions.toFixed(2) + " €";
+}
