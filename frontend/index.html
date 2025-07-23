@@ -78,7 +78,7 @@
             </div>
 
             <div class="carte" id="box2">
-              <p class="petitText">Valorisation</p>
+              <p class="petitText">Valorisation total</p>
               <p class="txtValorisation" id="valorisationEuro"></p>
               <p class="txtValorisation" id="valorisationPourcent"></p>
             </div>
@@ -201,7 +201,7 @@
         </div>
         <input type="number" name="quantiteActionVente" placeholder="Quantité vendue" required>
         <input type="date" name="dateVenteAction" placeholder="Date vente action"  id="inputDateVente" required>
-        <input type="number" name="montantVenteAction" placeholder="Prix vente action (€)" required>
+        <input type="number" step="0.01" min="0" name="montantVenteAction" placeholder="Prix vente action (€)" required>
         <!--TODO : Frais vente ??-->
         <button type="submit">Vendre</button>
       </form>
@@ -219,7 +219,11 @@
         </div>
         <select name="nomTypePortefeuille" id="selectTypePortefeuilleLiquidite" required></select>
         <select name="typeOperation" id="selectTypeOperation" required></select>
-        <input type="number" name="montantLiquidite" placeholder="Montant">
+        <p id="infoAjustement" style="display: none;">
+          <b>Astuce :</b> Indique ici la différence entre le solde espèces de ton courtier et celui de l'appli pour les syncroniser. <br>
+          Exemple : Espèce Boursorama - Espèce appli = Montant à indiquer
+        </p>
+        <input type="number" step="0.01" min="0" name="montantLiquidite" placeholder="Montant" required>
         <button type="submit">Valider</button>
       </form>
     </div>

@@ -1048,7 +1048,7 @@ function chargerListeTypeOperation() {
   const selectTypeOperation = document.getElementById("selectTypeOperation");
   selectTypeOperation.innerHTML = "";
 
-  const options = ["Virement entrant","Virement sortant"];
+  const options = ["Virement entrant","Virement sortant","Ajuster les montants"];
 
   options.forEach(opt =>{
     const option = document.createElement("option");
@@ -1063,12 +1063,32 @@ function dateJourDefault(inputDateParametre) {
   inputDate.value = new Date().toISOString().split('T')[0];
 }
 
+document.getElementById("selectTypeOperation").addEventListener("change", function(){
+  const info = document.getElementById("infoAjustement")
+  if(this.value === "Ajuster les montants"){
+    info.style.display = "block";
+  }
+  else{
+    info.style.display = "none";
+  }
+})
+
 
 formAjoutLiquidite.addEventListener("submit", async function (e) {
   e.preventDefault();
 
   let idportefeuilleValue = parseInt(document.getElementById("selectTypePortefeuilleLiquidite").value)
-  let selectTypeOperation = e.target.typeOperation.value === "Virement entrant" ? "entrant" : "sortant";
+  let typeOperation = e.target.typeOperation.value;
+  let selectTypeOperation;
+  if(typeOperation === "Virement entrant" || typeOperation === "Ajuster les montants")
+  {
+    selectTypeOperation = "entrant";
+  }
+  else
+  {
+    selectTypeOperation = "sortant";
+  }
+
   let montant = e.target.montantLiquidite.value;
   let date = e.target.dateOperation.value;
 

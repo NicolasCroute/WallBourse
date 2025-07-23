@@ -559,8 +559,16 @@ body{
 
 
 /*=====Moadale liquidite======*/
+#selectTypeOperation{
+  margin-bottom: 0;
+}
 
-
+#infoAjustement{
+  font-size: 0.8em;
+  font-style: italic;
+  margin-top: 0;
+  padding: 1vh;
+}
 
 
 

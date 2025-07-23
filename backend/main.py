@@ -445,7 +445,8 @@ def vendre_action(id: int, quantite: int = Query(..., gt=0), prix_vente: float =
     
     portefeuille = db.query(Portefeuille).filter_by(idportefeuille=action.idportefeuille).first()
     montant_vente = quantite * prix_vente
-    portefeuille.especeportefeuille = (portefeuille.especeportefeuille or 0) + montant_vente
+    montant_vente = Decimal(str(montant_vente))
+    portefeuille.especeportefeuille = (portefeuille.especeportefeuille or Decimal("0")) + montant_vente
 
     action.quantiteaction -= quantite
 
