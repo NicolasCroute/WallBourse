@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DECIMAL, Date, Boolean
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -24,6 +25,8 @@ class Portefeuille(Base):
     idplateforme = Column(Integer, ForeignKey("plateforme.idplateforme"), nullable=False)
     idutilisateur = Column(Integer, ForeignKey("utilisateur.idutilisateur"), nullable=False)
     especeportefeuille = Column(DECIMAL, default=0)
+
+    liquidites = relationship("Liquidite", back_populates="portefeuille", cascade="all, delete-orphan")
 
 class Action(Base):
     __tablename__ = "action"
@@ -72,3 +75,5 @@ class Liquidite(Base):
     montantliquidite = Column(DECIMAL, nullable=False)
     typeliquidite = Column(String, nullable=False)
     idportefeuille = Column(Integer, ForeignKey("portefeuille.idportefeuille"), nullable=False)
+
+    portefeuille = relationship("Portefeuille", back_populates="liquidites")

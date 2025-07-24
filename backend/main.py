@@ -722,7 +722,7 @@ def get_cout_achat_avec_frais(action: Action, db: Session) -> float:
     transaction = db.query(Transaction).filter(Transaction.idaction == action.idaction).order_by(Transaction.datetransaction.desc()).first()
     frais = float(transaction.fraistransaction) if transaction and transaction.fraistransaction else 0
     
-    print("transaction : ", transaction.fraistransaction)
+    print("transaction : ", transaction.fraistransaction, " idtransaction : " , transaction.idtransaction)
     print("frais : ", frais)
     return montant_achat + frais
 

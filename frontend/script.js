@@ -408,6 +408,13 @@ async function remplirGainTableau(data, tbody){
     if(a.symbol == "IPS.PA"){
       console.log("Frais Ipsos : " + fraisTotal)
     }
+    else if (a.symbol == "MC.PA"){
+      console.log("Frais LVMH : " + fraisTotal)
+    }
+    else if (a.symbol == "TTE.PA"){
+      console.log("Frais Total : " + fraisTotal)
+    }
+    
     const valeurAchat = (prixAchat * quantite) + fraisTotal;
     const valeurActuelle = prixActuel * quantite;
 
