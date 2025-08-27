@@ -1087,14 +1087,19 @@ formAjoutLiquidite.addEventListener("submit", async function (e) {
   let idportefeuilleValue = parseInt(document.getElementById("selectTypePortefeuilleLiquidite").value)
   let typeOperation = e.target.typeOperation.value;
   let selectTypeOperation;
-  if(typeOperation === "Virement entrant" || typeOperation === "Ajuster les montants")
+  if(typeOperation === "Virement entrant")
   {
     selectTypeOperation = "entrant";
+  }
+  else if (typeOperation === "Ajuster les montants")
+  {
+    selectTypeOperation = "ajuster";
   }
   else
   {
     selectTypeOperation = "sortant";
   }
+
 
   let montant = e.target.montantLiquidite.value;
   let date = e.target.dateOperation.value;

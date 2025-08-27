@@ -367,6 +367,9 @@ def get_actions_tous_portefeuilles(id: int, db: Session = Depends(get_db), user:
         ]
     }
 
+
+
+
 #===Ajout Action===
 class ActionInput(BaseModel):
     nomaction: str
