@@ -391,7 +391,10 @@ body{
   height: 300px;
 }
 
-/*====CARTE 5=====*/
+/*============CARTE 5===============*/
+/*====Realisation de la semaine=====*/
+/*==================================*/
+
 .petitInfoMontant p{
   margin: 0;
   padding: 0;
@@ -404,6 +407,28 @@ body{
   font-style: italic;
   
 }
+
+.divTableGainSemaine{
+  margin: 2vh 2vw;
+}
+
+.tableGainSemaine{
+  border-collapse: collapse;
+}
+
+.tableGainSemaine th, .tableGainSemaine td{
+  padding: 1vh 15px;
+  border: 1px solid black;
+}
+
+
+#date-jourNum{
+  font-size: 0.6em;
+  font-style: italic;
+}
+
+
+
 
 
 /*============*/

@@ -336,21 +336,10 @@ async function afficherListeActions(data){
     tdQuantite.textContent = a.quantiteaction;
 
     const tdPrixAchat = document.createElement("td");
-    tdPrixAchat.textContent = a.prixachataction;
+    tdPrixAchat.textContent = "0€";
 
     const tdPrixActuel = document.createElement("td");
-    const res = await fetch(`${API_URL}/quote/${a.symbol}`, {
-      headers: {
-        "Authorization": `Bearer ${getToken()}`
-      }
-    });
-    const dataPrix = await res.json();
-    if(dataPrix && typeof dataPrix.prix === "number"){
-      tdPrixActuel.textContent = dataPrix.prix.toFixed(2);
-    }
-    else{
-      tdPrixActuel.textContent = "-";
-    }
+    tdPrixAchat.textContent = "0€";
 
     const tdGainJourEuro = document.createElement("td");
     tdGainJourEuro.textContent = "0 €";
@@ -394,9 +383,10 @@ async function remplirGainTableau(data, tbody){
       }
     });
     if(!res.ok)return;
-
+    
     const prixActuelData = await res.json();
     const prixActuel = prixActuelData.prix;
+    console.log("Prix actuelle :", prixActuel)
     const prixPrecedent = prixActuelData.prixPrecedent;
 
     const prixAchat = parseFloat(a.prixachataction);
@@ -410,6 +400,9 @@ async function remplirGainTableau(data, tbody){
     }
     else if (a.symbol == "MC.PA"){
       console.log("Frais LVMH : " + fraisTotal)
+    }
+    else if(a.symbol == "STM"){
+      console.log("Frais STMicro : " + fraisTotal)
     }
     else if (a.symbol == "TTE.PA"){
       console.log("Frais Total : " + fraisTotal)
@@ -432,6 +425,8 @@ async function remplirGainTableau(data, tbody){
     totalGainEuro += gainTotalEuro;
 
     const tr = tbody.children[index];
+    tr.children[2].textContent = `${prixAchat.toFixed(2)} €`;
+    tr.children[3].textContent = `${prixActuel.toFixed(2)} €`;
     tr.children[4].textContent = `${gainJourEuro.toFixed(2)} €`;
     tr.children[5].textContent = `${gainJourPourcent.toFixed(2)} %`;
     tr.children[6].textContent = `${gainTotalEuro.toFixed(2)} €`;
@@ -448,6 +443,7 @@ async function remplirGainTableau(data, tbody){
         td.classList.add("positif");
       }
     };
+
 
     appliqueCouleur(tr.children[4], gainJourEuro);
     appliqueCouleur(tr.children[5], gainJourPourcent);
@@ -466,6 +462,7 @@ async function remplirGainTableau(data, tbody){
   }
 
   remplirCarteValorisation(totalGainEuro, gainPourcentTotal);
+  remplirCarteRealisationSemaine()
 }
 
 function remplirCarteValorisation(valorisationEuro, valorisationPourcent){
@@ -653,10 +650,10 @@ document.getElementById("nomAction").addEventListener("input", async (e) =>{
   if(recherche.length < 2) return;
 
   const res = await fetch(`${API_URL}/rechercheActions?nom=${recherche}`, {
-      headers: {
-        "Authorization": `Bearer ${getToken()}`
-      }
-    });
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
   const data = await res.json();
   LISTE_RECHERCHE = data;
 
@@ -672,7 +669,7 @@ document.getElementById("nomAction").addEventListener("input", async (e) =>{
 
 document.getElementById("nomAction").addEventListener("change", (e) =>{
   const valeurChoisie = e.target.value;
-  const trouvee = LISTE_RECHERCHE.find(a => valeurChoisie.startsWith(a.symbol));
+  const trouvee = LISTE_RECHERCHE.find(a => valeurChoisie === `${a.symbol} - ${a.name}`);
   if(trouvee){
     document.getElementById("symbolAction").value = trouvee.symbol;
   }
@@ -707,9 +704,22 @@ window.addEventListener("click", function (e) {
 
 formAchatAction.addEventListener("submit", async function (e) {
   e.preventDefault();
+  let nomActionInput = document.getElementById("nomAction");
+  let symbolActionInput = document.getElementById("symbolAction");
 
   let nomActionValue = e.target.nomAction.value;
   let symbolActionVAlue = e.target.symbolAction.value;
+  if(!symbolActionVAlue){
+    nomActionInput.style.borderColor = "red";
+    symbolActionInput.style.borderColor = "red";
+    alert("Veuillez choisir une action valide dans la liste. \n (Le champs Symbole doit se remplir automatiquement)");
+    return;
+  }
+  else{
+    nomActionInput.style.borderColor = "#0099FF";
+    symbolActionInput.style.borderColor = "#0099FF";
+  }
+
   let quantiteActionValue = Math.floor(e.target.quantiteAction.value);
   let dateAchatActionValue = e.target.dateAchatAction.value;
   let montantInitActionValue = e.target.montantInitAction.value;
@@ -1172,3 +1182,44 @@ async function afficherEtatGlobalPortefeuille(id) {
   document.getElementById("especePortefeuille").innerHTML = "Espèces : " + data.espece.toFixed(2) + " €";
   document.getElementById("titrePortefeuille").innerHTML = "Titres : " + data.valeurActions.toFixed(2) + " €";
 }
+
+
+// ---------------------------------
+// --- Realisation de la semaine ---
+// ---------------------------------
+
+
+async function remplirCarteRealisationSemaine() {
+  const utilisateur = await getUtilisateurActuel();
+  console.log("utilisateur : ", utilisateur.idutilisateur)
+  
+  const res = await fetch(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/realisation-semaine`, {
+    headers: {
+      "Authorization": `Bearer ${getToken()}`
+    }
+  });
+  const data = await res.json();
+
+  console.log("data", data)
+  
+  const tbody = document.querySelector(".tableGainSemaine tbody")
+  tbody.innerHTML= ""
+
+  for (const day of data.historique_valeur){
+    const tr = document.createElement("tr");
+
+
+    const tdJour = document.createElement("td");
+
+    tdJour.innerHTML=`<span id="date-jourNum">${day.jourNum}</span> ${day.jourLettre}`;
+
+    const tdGainJour = document.createElement("td");
+    tdGainJour.textContent = day.prix.toFixed(2) + " €";
+
+    tr.appendChild(tdJour);
+    tr.appendChild(tdGainJour);
+
+    tbody.appendChild(tr);
+  }
+}
+
