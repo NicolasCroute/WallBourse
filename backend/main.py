@@ -6,7 +6,7 @@ from database import SessionLocal, engine, Base
 from models import Portefeuille, Utilisateur, Action, TypePortefeuille, Plateforme, Transaction, Liquidite
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 from decimal import Decimal
 from ttf import TTF_ISIN_LIST
@@ -14,6 +14,7 @@ from session import utilisateur_connecte_id
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
+import pandas as pd
 import yfinance as yf
 import requests
 import logging
@@ -22,7 +23,6 @@ import os
 import jwt
 import traceback
 import datetime
-
 
 
 #=============================================
@@ -311,7 +311,7 @@ def get_actions(db: Session = Depends(get_db), user: Utilisateur = Depends(admin
             "dateachataction":a.dateachataction,
             "prixachataction":a.prixachataction,
             "actionvendu":a.actionvendu
-        } 
+        }
         for a in actions]
 
 @app.get("/portefeuille/{id}/actions")
@@ -322,6 +322,7 @@ def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db), user: U
         raise HTTPException(status_code=403, detail="Accès interdit")
 
     actions = db.query(Action).filter_by(idportefeuille=id, actionvendu=False).all()
+
     return {
         "totalportefeuille": float(portefeuille.totalportefeuille),
         "actions":[
@@ -333,7 +334,7 @@ def get_actions_par_portefeuille(id: int, db: Session = Depends(get_db), user: U
                 "quantiteaction":a.quantiteaction,
                 "actionvendu":a.actionvendu,
                 "fraistotal": (db.query(Transaction.fraistransaction).filter(Transaction.idaction == a.idaction).order_by(Transaction.datetransaction.desc()).first() or (0,))[0]
-            } 
+            }
         
         for a in actions]
     }
@@ -588,7 +589,7 @@ def calculerFraisTransactionBourseDirecte(montant: float) -> float:
 #=======================================================
 
 @app.get("/quote/{symbol}")
-def get_cotation_actuelle(symbol: str, user: Utilisateur = Depends(getUtilisateurActuel)):
+def get_cotation_actuelle(symbol: str):
     try:
         stock = yf.Ticker(symbol)
         info = stock.info
@@ -755,7 +756,7 @@ class LiquiditeInput(BaseModel):
     idportefeuille: int
 
 @app.post("/liquidite")
-def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: Utilisateur = Depends(adminRequis)):
+def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
     montant = Decimal(str(data.montantliquidite))
     portefeuille = db.query(Portefeuille).filter_by(idportefeuille=data.idportefeuille).first()
     if not portefeuille:
@@ -789,7 +790,7 @@ def get_etat_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisat
     return calcul_etat_portefeuille(portefeuille, db)
 
 @app.get("/utilisateur/{id}/etat-global")
-def get_etat_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+def get_etat_global(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
     portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
     if not portefeuilles:
         raise HTTPException(status_code=404, detail="Aucun portefeulle trouvé")
@@ -797,15 +798,16 @@ def get_etat_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisat
     total_epece = 0
     total_valeur_actions = 0
     total_investi = 0
+    total_investi_debut = 0
 
     for p in portefeuilles:
         etat = calcul_etat_portefeuille(p, db)
         total_epece += etat["espece"]
         total_valeur_actions += etat["valeurActions"]
         total_investi += etat["totalInvesti"]
+        total_investi_debut += etat["investInitialPortefeuille"]
     
-    
-    total_portefeuille = total_epece + total_valeur_actions
+    total_portefeuille = total_epece + total_valeur_actions + total_investi_debut
 
     return{
         "espece": round(total_epece, 2),
@@ -835,14 +837,85 @@ def calcul_etat_portefeuille(portefeuille, db):
         total_pru += montant_achat_total
 
     especeportefeuille = float(portefeuille.especeportefeuille or 0)
-    total_portefeuille = especeportefeuille + valeur_actions
+    investInitialPortefeuille = float(portefeuille.totalportefeuille or 0)
+    total_portefeuille = especeportefeuille + valeur_actions + investInitialPortefeuille
 
     return {
         "espece": round(especeportefeuille, 2),
         "valeurActions": round(valeur_actions, 2),
+        "investInitialPortefeuille": round(investInitialPortefeuille, 2),
         "totalPortefeuille": round(total_portefeuille, 2),
         "totalInvesti": round(total_pru, 2)
     }
+
+
+
+#=====================================================================
+#=======================REALISATION DE LA SEMAINE=====================
+#=====================================================================
+
+@app.get("/utilisateur/{id}/realisation-semaine")
+def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
+    portefeuillesUtilisateur = db.query(Portefeuille).filter_by(idutilisateur=id).all()
+
+    name_day = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+    
+    today = date.today()
+    monday = today - timedelta(days=today.weekday()) #lundi
+
+    historique_valeur=[]
+    cumul_jour={}
+
+    for p in portefeuillesUtilisateur:
+        actions = db.query(Action).filter_by(idportefeuille=p.idportefeuille, actionvendu=False).all()
+        for a in actions:
+            data = yf.download(a.symbol, start=monday - timedelta(days=3), end=monday+timedelta(days=7), interval="1d")
+            # print("data : " , data)
+
+            if data.empty or "Close" not in data.columns:
+                print("Pas de donné pour ce symbole :", a.symbol)
+                continue
+
+            data_close = data["Close"]
+            if isinstance(data_close, pd.DataFrame):    #est ce que data_closes et un DataFrame = plusieurs colones
+                data_close = data_close.iloc[:, 0]       # séléctione les premieres valeurs de la première colone
+            data_close = data_close.to_list()
+
+            dates = list(data.index)
+
+            for i in range(1, len(data_close)):
+                jour = dates[i].date()
+                if jour.weekday() < 5:
+                    prixJour = float(data_close[i])
+                    prixVeille = float(data_close[i-1])
+                    variation = (prixJour - prixVeille)*a.quantiteaction
+
+                    #if(a.symbol == "IPS.PA"):
+                    #    print("========GAIN SEMAINE==========")
+                    #    print("IPS  gain_perte_jour : ", variation)
+                    #    print("IPS  prixJour : ", prixJour)
+                    #    print("IPS  prixVeille : ", prixVeille)
+                    #    print("IPS  quantiteaction : ", a.quantiteaction)
+
+                    if jour not in cumul_jour:
+                        cumul_jour[jour] = 0.0
+                    cumul_jour[jour] += variation
+
+    for jour in sorted(cumul_jour.keys()):
+        dayLetter = name_day[jour.weekday()]
+        valeur = round(cumul_jour[jour],2)
+        historique_valeur.append({"jourNum":jour, "jourLettre":dayLetter, "prix": valeur})
+
+    print("historique_valeur : " , historique_valeur)
+
+    return {
+        "historique_valeur":historique_valeur
+    }
+    
+
+
+
+
 
 
 
