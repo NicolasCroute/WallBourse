@@ -864,6 +864,7 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
     
     today = date.today()
     monday = today - timedelta(days=today.weekday()) #lundi
+    friday =  monday + timedelta(days=4)
 
     historique_valeur=[]
     cumul_jour={}
@@ -878,7 +879,7 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
                 data = cache_entry["data"]
                 print("Donné en cache pour ", a.symbol)
             else:
-                data = yf.download(a.symbol, start=monday - timedelta(days=3), end=monday+timedelta(days=7), interval="1d")
+                data = yf.download(a.symbol, start=monday - timedelta(days=1), end=friday + timedelta(days=1), interval="1d")
                 # print("data : " , data)
                 cache_yf_real_semaine[a.symbol] = {"date": date.today(), "data":data}
 
@@ -895,6 +896,9 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
 
             for i in range(1, len(data_close)):
                 jour = dates[i].date()
+                if jour < monday or jour > friday:
+                    continue
+
                 if jour.weekday() < 5:
                     prixJour = float(data_close[i])
                     prixVeille = float(data_close[i-1])
