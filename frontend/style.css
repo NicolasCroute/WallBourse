@@ -703,6 +703,18 @@ body{
   .tableAction th{
     padding: 2px 4px;
   }
+
+  /*========CARTE5==========*/
+
+  .divTableGainSemaine{
+    margin: 2vh 1vw;
+  }
+
+  .tableGainSemaine th, .tableGainSemaine td{
+    padding: 7px 20px;
+    font-size: 0.9em;
+  }
+
 }
 
 

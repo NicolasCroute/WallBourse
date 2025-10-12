@@ -854,6 +854,8 @@ def calcul_etat_portefeuille(portefeuille, db):
 #=======================REALISATION DE LA SEMAINE=====================
 #=====================================================================
 
+cache_yf_real_semaine = {}
+
 @app.get("/utilisateur/{id}/realisation-semaine")
 def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
     portefeuillesUtilisateur = db.query(Portefeuille).filter_by(idutilisateur=id).all()
@@ -865,12 +867,20 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
 
     historique_valeur=[]
     cumul_jour={}
+    tauxEvolution_jour={}
 
     for p in portefeuillesUtilisateur:
         actions = db.query(Action).filter_by(idportefeuille=p.idportefeuille, actionvendu=False).all()
         for a in actions:
-            data = yf.download(a.symbol, start=monday - timedelta(days=3), end=monday+timedelta(days=7), interval="1d")
-            # print("data : " , data)
+            cache_entry = cache_yf_real_semaine.get(a.symbol)
+
+            if cache_entry and cache_entry["date"] == date.today():
+                data = cache_entry["data"]
+                print("Donné en cache pour ", a.symbol)
+            else:
+                data = yf.download(a.symbol, start=monday - timedelta(days=3), end=monday+timedelta(days=7), interval="1d")
+                # print("data : " , data)
+                cache_yf_real_semaine[a.symbol] = {"date": date.today(), "data":data}
 
             if data.empty or "Close" not in data.columns:
                 print("Pas de donné pour ce symbole :", a.symbol)
@@ -889,6 +899,7 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
                     prixJour = float(data_close[i])
                     prixVeille = float(data_close[i-1])
                     variation = (prixJour - prixVeille)*a.quantiteaction
+                    tauxEvolution = ((prixJour - prixVeille)/prixVeille)*100
 
                     #if(a.symbol == "IPS.PA"):
                     #    print("========GAIN SEMAINE==========")
@@ -901,12 +912,15 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
                         cumul_jour[jour] = 0.0
                     cumul_jour[jour] += variation
 
+                    if jour not in tauxEvolution_jour:
+                        tauxEvolution_jour[jour] = 0.0
+                    tauxEvolution_jour[jour] += tauxEvolution
+
     for jour in sorted(cumul_jour.keys()):
         dayLetter = name_day[jour.weekday()]
         valeur = round(cumul_jour[jour],2)
-        historique_valeur.append({"jourNum":jour, "jourLettre":dayLetter, "prix": valeur})
-
-    print("historique_valeur : " , historique_valeur)
+        tauxEvolution = round(tauxEvolution_jour[jour],2)
+        historique_valeur.append({"jourNum":jour, "jourLettre":dayLetter, "prix": valeur, "tauxEvolution": tauxEvolution})
 
     return {
         "historique_valeur":historique_valeur

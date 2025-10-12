@@ -1208,7 +1208,6 @@ async function remplirCarteRealisationSemaine() {
   for (const day of data.historique_valeur){
     const tr = document.createElement("tr");
 
-
     const tdJour = document.createElement("td");
 
     tdJour.innerHTML=`<span id="date-jourNum">${day.jourNum}</span> ${day.jourLettre}`;
@@ -1216,8 +1215,12 @@ async function remplirCarteRealisationSemaine() {
     const tdGainJour = document.createElement("td");
     tdGainJour.textContent = day.prix.toFixed(2) + " €";
 
+    const tdTauxEvolutionJour = document.createElement("td");
+    tdTauxEvolutionJour.textContent = day.tauxEvolution.toFixed(2) + " %";
+
     tr.appendChild(tdJour);
     tr.appendChild(tdGainJour);
+    tr.appendChild(tdTauxEvolutionJour);
 
     tbody.appendChild(tr);
   }
