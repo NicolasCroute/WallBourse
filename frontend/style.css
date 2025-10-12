@@ -706,13 +706,13 @@ body{
 
   /*========CARTE5==========*/
 
-  .divTableGainSemaine{
-    margin: 2vh 1vw;
+  .divTableGainSemaine{    
+    margin: 3vh 1.3vw;
   }
 
   .tableGainSemaine th, .tableGainSemaine td{
     padding: 7px 20px;
-    font-size: 0.9em;
+    font-size: 0.85em;
   }
 
 }

@@ -879,7 +879,7 @@ def get_realisation_semaine(id: int, db: Session = Depends(get_db)):
                 data = cache_entry["data"]
                 print("Donné en cache pour ", a.symbol)
             else:
-                data = yf.download(a.symbol, start=monday - timedelta(days=1), end=friday + timedelta(days=1), interval="1d")
+                data = yf.download(a.symbol, start=monday - timedelta(days=3), end=friday + timedelta(days=1), interval="1d")
                 # print("data : " , data)
                 cache_yf_real_semaine[a.symbol] = {"date": date.today(), "data":data}
 
