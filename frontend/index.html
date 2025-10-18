@@ -79,8 +79,10 @@
 
             <div class="carte" id="box2">
               <p class="petitText">Valorisation total</p>
-              <p class="txtValorisation" id="valorisationEuro"></p>
-              <p class="txtValorisation" id="valorisationPourcent"></p>
+              <div class="moyenText">
+                <p class="txtValorisation" id="valorisationEuro"></p>
+                <p class="txtValorisation" id="valorisationPourcent"></p>
+              </div>
             </div>
 
             <div class="carte" id="box3">
@@ -88,8 +90,8 @@
                 <p>Total</p>
                 <p id="gestionLiquidite">+/-</p>
               </div>
-              <p id="prixTotal"></p>
-              <div class="petitInfoMontant">
+              <p class="moyenText" id="prixTotal"></p>
+              <div class="toutPetitText" id="petitInfoMontant">
                 <p id="especePortefeuille"></p>
                 <p id="titrePortefeuille"></p>
               </div>
@@ -106,17 +108,19 @@
 
             <div class="carte" id="box5">
               <p class="petitText">Réalisation de la semaine</p>
-              <div class="divTableGainSemaine">
-                <table class="tableGainSemaine">
-                  <thead>
-                    <tr>
-                      <th>Jour</th>
-                      <th>Gain (€)</th>
-                      <th>Gain (%)</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
+                <div id="tableauBox5">
+                  <div class="divTableGainSemaine">
+                  <table class="tableGainSemaine">
+                    <thead>
+                      <tr>
+                        <th>Jour</th>
+                        <th>Gain (€)</th>
+                        <th>Gain (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
               </div>
             </div>
             

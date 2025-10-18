@@ -4,6 +4,10 @@ body{
   background-color: #FFFCF9;
 }
 
+:root {
+  --couleur-principale: #0099FF;
+}
+
 .corp{
   position: relative;
   height: auto;
@@ -17,6 +21,10 @@ body{
   margin: 2px 0;
   line-height: 1.2;
   color: #383838; 
+}
+
+.toutPetitText{
+  font-size: 0.8em;
 }
 
 .moyenText {
@@ -106,7 +114,7 @@ body{
 .styleChoixMenu {
   transform: scale(1.1);
   font-weight: bold;
-  color: #0099FF;
+  color: var(--couleur-principale);
   transition: transform 0.2s ease;
 }
 
@@ -161,13 +169,13 @@ body{
 .formLogin input{
   width: 150px;
   padding: 10px;
-  border-color: #0099FF;
+  border-color: var(--couleur-principale);
 }
 
 .formLogin button{
   width: 100px;
   padding: 5px;
-  background-color: #0099FF;
+  background-color: var(--couleur-principale);
   border: none;
   color: white;
   cursor: pointer;
@@ -186,7 +194,7 @@ body{
 }
 
 .lienChangementLogin{
-  color: #0099FF;
+  color: var(--couleur-principale);
   cursor: pointer;
 }
 .lienChangementLogin:hover{
@@ -296,7 +304,7 @@ body{
 #selectionAjoutPortefeuille{
   display: grid;
   grid-auto-flow: column;
-  color: #0099FF;
+  color: var(--couleur-principale);
   cursor: pointer;
 }
 
@@ -304,7 +312,7 @@ body{
 #listePortefeuilles{
   outline: none;
   border: none;
-  color: #0099FF;
+  color: var(--couleur-principale);
   background-color: #00000000;
   border: #00000000;
   margin-left: -0.3vw;
@@ -322,16 +330,14 @@ body{
 .txtValorisation{
   margin: 10px 0;
   text-align: center;
-  font-size: 1.4em;
   font-weight: 600;
 }
 
 #prixTotal{
   margin: 10px 0 0 0;
-  color: #0099FF;
+  color: var(--couleur-principale);
   text-align: center;
   font-weight: bold;
-  font-size: 1.6em;
 }
 
 .deuxiemeSection{
@@ -391,34 +397,60 @@ body{
   height: 300px;
 }
 
-/*============CARTE 5===============*/
+/*============CARTE5===============*/
 /*====Realisation de la semaine=====*/
 /*==================================*/
 
-.petitInfoMontant p{
-  margin: 0;
+#petitInfoMontant{
+  margin-top: 10px;
+}
+
+#petitInfoMontant p{
   padding: 0;
+  margin: 0px;
   text-align: center;
 }
 
-.petitInfoMontant p{
-  font-size: 0.8em;
+#petitInfoMontant p{
   color: #585858;
   font-style: italic;
-  
+}
+
+#tableauBox5{
+  margin-top: 2vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .divTableGainSemaine{
-  margin: 2vh 2vw;
+  font-size: 1em;
+  border-radius: 10px;
+  overflow: hidden;
+  display: inline-block; 
+  border: 1px solid var(--couleur-principale);
 }
 
 .tableGainSemaine{
   border-collapse: collapse;
+  background: white;
+
 }
+
 
 .tableGainSemaine th, .tableGainSemaine td{
   padding: 1vh 15px;
-  border: 1px solid black;
+}
+
+.tableGainSemaine th{
+  background-color: var(--couleur-principale);
+  color: white;
+  font-weight: normal;
+}
+
+/*Griser une ligne sur 2 :*/
+.tableGainSemaine tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
 }
 
 
@@ -440,32 +472,41 @@ body{
 
 /*=====Table action=====*/
 
+
+
 #divTableauAjout{
+  margin-top: 5vh;
   display: flex;
   justify-content: center;
+  font-size: 1em;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--couleur-principale);
 }
 
 .tableAction{
   border-collapse: collapse;
-  margin: 25px 0;
   font-size: 18px;
   min-width: 400px;
-  width: 90%;
+  width: 100%;
   text-align: left;
 }
 
 .tableAction th, .tableAction td{
   padding: 12px 15px;
-  border: 1px solid #0099FF;
 }
 
 .tableAction thead tr{
-  background-color: #0099FF;
+  background-color: var(--couleur-principale);
   color: white;
   text-align: center;
   font-weight: bold;
 }
 
+/*Griser une ligne sur 2 :*/
+.tableAction tbody tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
 
 
 
@@ -528,13 +569,13 @@ body{
 .formModal input{
   width: 150px;
   padding: 10px;
-  border-color: #0099FF;
+  border-color: var(--couleur-principale);
 }
 
 .formModal button{
   width: 100px;
   padding: 5px;
-  background-color: #0099FF;
+  background-color: var(--couleur-principale);
   border: none;
   color: white;
   cursor: pointer;
@@ -543,7 +584,7 @@ body{
 .formModal select{
   width: 175px;
   padding: 10px;
-  border: 3px solid #0099FF;
+  border: 3px solid var(--couleur-principale);
   margin-bottom: 10px;
 }
 
@@ -601,12 +642,90 @@ body{
 
 
 
+/*==============================================================================================*/
+/*==========================================PETIT PC============================================*/
+/*==============================================================================================*/
+
+@media screen and (max-width: 1100px) and (min-width: 768px) {
+
+  .premiereSection{
+    padding: 5vh 4vw;
+  }
+
+  .overlay{
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 180px);
+    grid-template-rows: repeat(4, 140px);
+    grid-gap: 20px 20px
+  }
+
+  #box1{
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+  }
+
+  #box2{
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 1;
+    grid-row-end: 1;
+  }
+
+  #box3{
+    grid-column-start: 4;
+    grid-column-end: 5;
+    grid-row-start: 1;
+    grid-row-end: 1;
+  }
+
+  #box4{
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 4;
+  }
+
+  #box5{
+    grid-column-start: 3;
+    grid-column-end: 5;
+    grid-row-start: 2;
+    grid-row-end: 4;
+  }
+
+  #box6{
+    grid-column-start: 1;
+    grid-column-end: 5;
+    grid-row-start: 5;
+    grid-row-end: 4;
+  }
+
+  .petitText{
+    font-size: 1em;
+  }
+
+  .toutPetitText{
+    font-size: 0.75em;
+  }
+
+  .moyenText{
+    font-size: 1.2em;
+  }
+
+  .divTableGainSemaine{
+    font-size: 0.8em;
+  }
+  
+}
+
 
 /*==============================================================================================*/
 /*==========================================TELEPHONE===========================================*/
 /*==============================================================================================*/
 
-@media (max-width: 768px) {
+@media screen and (max-width: 768px) {
 
   .premiereSection {
     padding: 7vh 0 4vh 0;
