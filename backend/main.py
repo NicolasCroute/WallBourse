@@ -277,6 +277,20 @@ def ajout_portefeuille(data: PorteFeuilleInput, db: Session = Depends(get_db)):
     db.add(nouveauPortefeuille)
     db.commit()
     db.refresh(nouveauPortefeuille)
+
+    if data.totalportefeuille and data.totalportefeuille > 0:
+        nouvelleLiquidite = Liquidite(
+            dateliquidite=data.dateouverture,
+            montantliquidite=data.totalportefeuille,
+            typeliquidite="entrant",
+            idportefeuille=nouveauPortefeuille.idportefeuille
+        )
+        db.add(nouvelleLiquidite)
+        nouveauPortefeuille.especeportefeuille = data.totalportefeuille
+    
+    db.commit()
+    db.refresh(nouveauPortefeuille)
+
     return{"message":"Portefeuille ajouté", "id":nouveauPortefeuille.idportefeuille}
 
 
@@ -807,7 +821,7 @@ def get_etat_global(id: int, db: Session = Depends(get_db), user: Utilisateur = 
         total_investi += etat["totalInvesti"]
         total_investi_debut += etat["investInitialPortefeuille"]
     
-    total_portefeuille = total_epece + total_valeur_actions + total_investi_debut
+    total_portefeuille = total_epece + total_valeur_actions
 
     return{
         "espece": round(total_epece, 2),
@@ -838,7 +852,7 @@ def calcul_etat_portefeuille(portefeuille, db):
 
     especeportefeuille = float(portefeuille.especeportefeuille or 0)
     investInitialPortefeuille = float(portefeuille.totalportefeuille or 0)
-    total_portefeuille = especeportefeuille + valeur_actions + investInitialPortefeuille
+    total_portefeuille = especeportefeuille + valeur_actions
 
     return {
         "espece": round(especeportefeuille, 2),

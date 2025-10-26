@@ -6,6 +6,12 @@ const API_URL =
 
 async function getUtilisateurActuel() {
   const token = localStorage.getItem("token")
+
+  if(!token) {
+    window.location.replace("index.html");
+    throw new Error("Non authentifié")
+  }
+
   const res = await fetch(`${API_URL}/utilisateur/mes-donnees`,{
     headers:{
       "Content-Type": "application/json",
@@ -13,7 +19,14 @@ async function getUtilisateurActuel() {
     }
   });
 
-  if (!res.ok) throw new Error("Non authentifié")
+  if (!res.ok){
+    if(res.status == 401){
+      localStorage.removeItem("token");
+      localStorage.removeItem("portefeuilleActifID");
+      window.location.replace("index.html")
+    }
+    throw new Error("Non authentifié")
+  } 
   return await res.json();
 }
 
@@ -27,18 +40,20 @@ function getToken() {
 // -----------------------------
 // ----------- LOGIN -----------
 // -----------------------------
-window.onload = () => {
+window.onload = async () => {
   const token = localStorage.getItem("token");
   if(!token) return;
 
   try {
     document.getElementById("loginSection").style.display = "none";
     document.getElementById("mainSection").style.display = "block";
-    afficherPortefeuilles()
-    afficherUtilisateur()
+
+    await new Promise(r => setTimeout(r, 300))
+    await afficherPortefeuilles()
+    await afficherUtilisateur()
   }
-  catch{
-    console.warn("Utilisateur non connecté");
+  catch (err){
+    console.warn("Utilisateur non connecté : ", err);
   }
 };
 
@@ -120,18 +135,36 @@ formInscription.addEventListener('submit', async (e) =>{
   });
 
   if (res.ok){
-    document.getElementById("loginSection").style.display = "none";
-    document.getElementById("mainSection").style.display = "block";
+    const data = await res.json()
 
-    afficherPortefeuilles()
-    afficherUtilisateur()
+    const loginRes = await fetch(`${API_URL}/login`,{
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        emailutilisateur: email,
+        motsdepasseutilisateur: motsdepasse
+      })
+    });
+
+    if (loginRes.ok){
+      const loginData = await loginRes.json();
+      localStorage.setItem("token", loginData.access_token);
+      console.log("Token stocké après inscription :", loginData.access_token)
+
+      document.getElementById("loginSection").style.display = "none";
+      document.getElementById("mainSection").style.display = "block";
+
+      afficherPortefeuilles()
+      afficherUtilisateur()
+    }
+    else{
+      alert("Erreur de connexion automatique après insciption")
+    }
   }
   else{
     const err = await res.json();
     alert("Erreur : " + err.detail)
   }
-  
-
 })
 
 // II.
@@ -243,6 +276,8 @@ async function afficherPortefeuilles() {
   
   const interval = localStorage.getItem("interval");
   afficherGraphiqueEvolutionGenerique(`${API_URL}/utilisateur/${utilisateur.idutilisateur}/evolution?interval=${interval}`)
+
+  remplirCartePerformance(utilisateur.idutilisateur)
 
   select.onchange = () =>{
     const idPortefeuilleActif = select.value
@@ -1224,5 +1259,74 @@ async function remplirCarteRealisationSemaine() {
 
     tbody.appendChild(tr);
   }
+}
+
+
+// -------------------------
+// --- Carte Performance ---
+// -------------------------
+
+async function remplirCartePerformance(iduser) {
+  const res = await fetch(`${API_URL}/utilisateur/${iduser}/evolution?interval=1mo`, {
+    headers: { "Authorization": `Bearer ${getToken()}` }
+  });
+
+  if (!res.ok) return;
+
+  const data = await res.json();
+  const variations = data.map(d => d.performance);
+  console.log("Variations :" + variations)
+  
+  let somme = 0;
+
+  for(let i =  0; i < variations.length; i++){
+    somme = somme + variations[i]
+    console.log("somme : ", somme)
+  }
+
+  const moyenne = somme / variations.length
+
+  let sommeEcartCarre = 0;
+  for(let i = 0; i<variations.length; i++){
+    const ecart = variations[i] - moyenne
+    sommeEcartCarre += Math.pow(ecart, 2)
+  }
+  const variance = sommeEcartCarre / (variations.length - 1);
+
+  const volatilite = Math.sqrt(variance) // = ecart type
+  console.log("volatilite : " , volatilite)
+
+  let SRRI;
+  if (volatilite < 0.5){
+    SRRI = 1
+  }
+  else if(volatilite >=0.5 && volatilite<2){
+    SRRI = 2
+  }
+  else if(volatilite >=2 && volatilite<5){
+    SRRI = 3
+  }
+  else if(volatilite >=5 && volatilite<10){
+    SRRI = 4
+  }
+  else if(volatilite >=10 && volatilite<15){
+    SRRI = 5
+  }
+  else if(volatilite >=15 && volatilite<25){
+    SRRI = 6
+  }
+  else if(volatilite >=25){
+    SRRI = 7
+  }
+  else{
+    SRRI = 0
+  }
+  console.log("SRRI : ", SRRI)
+
+  const box = document.getElementById("box6");
+
+  
+
+
 }
 
