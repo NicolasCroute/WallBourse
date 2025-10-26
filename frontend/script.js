@@ -1323,10 +1323,87 @@ async function remplirCartePerformance(iduser) {
   }
   console.log("SRRI : ", SRRI)
 
-  const box = document.getElementById("box6");
+  const idVolatilite = document.getElementById("idVolatilite");
+  const idRisque = document.getElementById("idRisque");
 
-  
+  idVolatilite.innerHTML = "Volatilité : " + Math.round(volatilite, 2) + "%"
+  idRisque.innerHTML = "Risque : " + SRRI
 
+  const ctx = document.getElementById("srriChart").getContext("2d");
 
+  const couleurs = [
+    "#008000",
+    "#4CAF50",
+    "#CDDC39",
+    "#FFC107",
+    "#FF9800",
+    "#F44336",
+    "#B71C1C"
+  ];
+
+  const labelsrri = ["1", "2", "3", "4", "5", "6", "7"]
+
+  if (window.srriChartInstance) {
+    window.srriChartInstance.destroy();
+  }
+
+  window.srriChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labelsrri,
+      datasets: [
+        {
+          label: "SRRI",
+          data: [1, 1, 1, 1, 1, 1, 1],
+          borderWidth: 1,
+          borderColor: "#ccc",
+          fill: false,
+          tension: 0,
+          pointBackgroundColor: couleurs,
+          pointRadius: (ctx) => (ctx.dataIndex + 1 === SRRI ? 10 : 7),
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+        title: {
+          display: true,
+          text: "Échelle de risque - SRRI",
+          font: { size: 14, weight: "bold" },
+          color: "#333",
+          formatter: (value, ctx) => ctx.dataIndex + 1, 
+        },
+      },
+      scales: {
+        x: {
+          ticks:{
+            display: false,
+            padding: { top: 0 },
+          },
+          grid:{
+            display: false,
+            padding: { top: 0 },
+          },
+          title: {
+            display: true,
+            
+            text: "Risque le plus faible      -      Risque le plus élevé",
+            color: "#555",
+            font: { size: 11 },
+            padding: { top: 0 },
+          },
+        },
+        y: {
+          display: false,
+          min: 0.5,
+          max: 1.1,
+        },
+      },
+    },
+  });
 }
 

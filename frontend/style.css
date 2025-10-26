@@ -463,6 +463,21 @@ body{
 /*=============CARTE6===============*/
 /*===========Performance============*/
 /*==================================*/
+#infoBox6{
+  margin-top: 0px;
+  display: grid;
+  grid-auto-flow: column;
+}
+
+
+#infoTextBox6{
+  margin-top: 15px;
+  margin-left: 10px;
+}
+
+#infoTextBox6 p{
+  font-size: 0.9em;
+}
 
 
 

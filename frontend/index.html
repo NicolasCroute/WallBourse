@@ -126,8 +126,16 @@
             
             <div class="carte" id="box6">
               <p class="petitText">Performance</p>
+              <div id="infoBox6">
+                <div id="infoTextBox6">
+                  <p id="idVolatilite" class="petitText">Volatilité : </p>
+                  <p id="idRisque" class="petitText">Risque : </p>
+                </div>
+                <div id="srriChartContainer" style="width: 70%; height: 110px; margin-top: -10px;">
+                  <canvas id="srriChart"></canvas>
+                </div>
+              </div>
             </div>
-
           </div>
         </div>
 
@@ -244,7 +252,6 @@
       </form>
     </div>
   </div>
-
   <script src="script.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
