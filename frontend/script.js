@@ -1275,13 +1275,11 @@ async function remplirCartePerformance(iduser) {
 
   const data = await res.json();
   const variations = data.map(d => d.performance);
-  console.log("Variations :" + variations)
   
   let somme = 0;
 
   for(let i =  0; i < variations.length; i++){
     somme = somme + variations[i]
-    console.log("somme : ", somme)
   }
 
   const moyenne = somme / variations.length
@@ -1294,51 +1292,59 @@ async function remplirCartePerformance(iduser) {
   const variance = sommeEcartCarre / (variations.length - 1);
 
   const volatilite = Math.sqrt(variance) // = ecart type
-  console.log("volatilite : " , volatilite)
+
+  let risque = "Faible";
 
   let SRRI;
   if (volatilite < 0.5){
     SRRI = 1
+    risque = "Très faible risque"
   }
   else if(volatilite >=0.5 && volatilite<2){
     SRRI = 2
+    risque = "Faible risque"
   }
   else if(volatilite >=2 && volatilite<5){
     SRRI = 3
+    risque = "Modéré"
   }
   else if(volatilite >=5 && volatilite<10){
     SRRI = 4
+    risque = "Équilibré"
   }
   else if(volatilite >=10 && volatilite<15){
     SRRI = 5
+    risque = "Dynamique"
   }
   else if(volatilite >=15 && volatilite<25){
     SRRI = 6
+    risque = "Élevé"
   }
   else if(volatilite >=25){
     SRRI = 7
+    risque = "Très élevé"
   }
   else{
     SRRI = 0
   }
   console.log("SRRI : ", SRRI)
 
-  const idVolatilite = document.getElementById("idVolatilite");
+  const idVolatilite = document.getElementById("idVolatiliteNombre");
   const idRisque = document.getElementById("idRisque");
 
-  idVolatilite.innerHTML = "Volatilité : " + Math.round(volatilite, 2) + "%"
-  idRisque.innerHTML = "Risque : " + SRRI
+  idVolatilite.innerHTML = Math.round(volatilite, 2) + "%"
+  idRisque.innerHTML = "Risque : " + risque
 
   const ctx = document.getElementById("srriChart").getContext("2d");
 
   const couleurs = [
-    "#008000",
-    "#4CAF50",
-    "#CDDC39",
-    "#FFC107",
-    "#FF9800",
-    "#F44336",
-    "#B71C1C"
+    "#6a98deff",
+    "#3c7fe3ff",
+    "#1f6bdeff",
+    "#175bc0ff",
+    "#064098ff",
+    "rgba(38, 4, 141, 1)",
+    "#210179ff"
   ];
 
   const labelsrri = ["1", "2", "3", "4", "5", "6", "7"]
@@ -1361,6 +1367,7 @@ async function remplirCartePerformance(iduser) {
           tension: 0,
           pointBackgroundColor: couleurs,
           pointRadius: (ctx) => (ctx.dataIndex + 1 === SRRI ? 10 : 7),
+          pointHoverRadius: 11,
         },
       ],
     },
@@ -1369,7 +1376,30 @@ async function remplirCartePerformance(iduser) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { enabled: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: "#333",     // fond sombre
+          titleColor: "#fff",          // couleur du titre
+          bodyColor: "#fff",           // couleur du texte
+          bodyFont: { size: 12 },
+          padding: 8,
+          displayColors: false,        // pas de carré de couleur
+          callbacks: {
+            label: function (context) {
+              const niveau = context.dataIndex + 1;
+              const messages = [
+                "Très faible risque",
+                "Faible risque",
+                "Modéré",
+                "Équilibré",
+                "Dynamique",
+                "Élevé",
+                "Très élevé",
+              ];
+              return `Niveau ${niveau} : ${messages[niveau - 1]}`;
+            },
+          },
+        },
         title: {
           display: true,
           text: "Échelle de risque - SRRI",
@@ -1380,22 +1410,7 @@ async function remplirCartePerformance(iduser) {
       },
       scales: {
         x: {
-          ticks:{
-            display: false,
-            padding: { top: 0 },
-          },
-          grid:{
-            display: false,
-            padding: { top: 0 },
-          },
-          title: {
-            display: true,
-            
-            text: "Risque le plus faible      -      Risque le plus élevé",
-            color: "#555",
-            font: { size: 11 },
-            padding: { top: 0 },
-          },
+          display: false,
         },
         y: {
           display: false,

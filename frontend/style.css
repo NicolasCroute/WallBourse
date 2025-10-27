@@ -471,12 +471,30 @@ body{
 
 
 #infoTextBox6{
-  margin-top: 15px;
+  margin-top: 5px;
   margin-left: 10px;
 }
 
 #infoTextBox6 p{
   font-size: 0.9em;
+}
+
+#idRisque{
+  margin-top: 5px;
+  font-style: italic;
+}
+
+#divVolatilite{
+  color: #0099FF;
+}
+
+#idVolatiliteNombre{
+  font-size: 1.6em;
+  font-weight: bold;
+}
+
+#idVolatiliteTexte{
+  font-style: italic;
 }
 
 
