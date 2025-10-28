@@ -409,7 +409,28 @@ async function afficherListeActions(data){
 async function remplirGainTableau(data, tbody){
   let totalInvesti = 0;
   let totalActuel = 0;
-  let totalGainEuro = 0;
+  //let totalGainEuro = 0;
+
+  const idPortefeuille = localStorage.getItem("portefeuilleActifID");
+  const utilisateur = await getUtilisateurActuel();
+  
+  let urlLiquidite;
+  if(idPortefeuille){
+    urlLiquidite = `/portefeuille/${idPortefeuille}/liquiditesAjustement`;
+  } else {
+    urlLiquidite = `/utilisateur/${utilisateur.idutilisateur}/liquiditesAjustement`;
+  }
+
+  const resLiquidite = await fetch(urlLiquidite,{
+    headers: {"Authorization": `Bearer ${getToken()}`}
+  });
+
+  let totalAjustement = 0;
+  if (resLiquidite.ok){
+    const dataLiquidite = await resLiquidite.json();
+    totalAjustement = dataLiquidite.totalAjustement;
+  }
+  console.log("totalAjustement :", totalAjustement)
 
   const promises = data.actions.map(async (a, index) =>{
     const res = await fetch(`${API_URL}/quote/${a.symbol}`,{
@@ -457,7 +478,7 @@ async function remplirGainTableau(data, tbody){
 
     totalInvesti += valeurAchat;
     totalActuel += valeurActuelle;
-    totalGainEuro += gainTotalEuro;
+    //totalGainEuro += gainTotalEuro;
 
     const tr = tbody.children[index];
     tr.children[2].textContent = `${prixAchat.toFixed(2)} €`;
@@ -488,9 +509,12 @@ async function remplirGainTableau(data, tbody){
 
   await Promise.all(promises)
 
-  let gainPourcentTotal;
+  const valorisationTotal = totalActuel + totalAjustement;
+  const totalGainEuro = valorisationTotal - totalInvesti
+
+  let gainPourcentTotal;  
   if(totalInvesti > 0){
-    gainPourcentTotal = ((totalActuel / totalInvesti) - 1 ) *100;
+    gainPourcentTotal = (valorisationTotal - totalInvesti) / totalInvesti * 100;
   }
   else{
     gainPourcentTotal = 0

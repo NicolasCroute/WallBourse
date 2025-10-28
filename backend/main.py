@@ -796,6 +796,30 @@ def ajout_liquidite(data: LiquiditeInput, db: Session = Depends(get_db), user: U
     return {"message":"Opération enregistrée", "especeportefeuille": float(portefeuille.especeportefeuille)}
 
 
+@app.get("/portefeuille/{id}/liquiditesAjustement") #A modifier si je veux etre moins précis
+def get_liquiditesAjustement_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    liquidites = db.query(Liquidite).filter_by(idportefeuille=id).all()
+    totalAjustement = 0.0
+    for liquidite in liquidites:
+        if liquidite.typeliquidite == "ajuster":
+            totalAjustement += float(liquidite.montantliquidite or 0)
+    return {"totalAjustement": round(totalAjustement, 2)}
+
+@app.get("/utilisateur/{id}/liquiditesAjustement") #A modifier si je veux etre moins précis
+def get_liquiditesAjustement_utilisateur(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
+    if user.idutilisateur != id and not user.estadmin:
+        raise HTTPException(status_code=403, detail="Accès interdit")
+    
+    totalAjustement = 0.0
+    portefeuilles = db.query(Portefeuille).filter_by(idutilisateur=id).all()
+    for portefeuille in portefeuilles:
+        liquidites = db.query(Liquidite).filter_by(idportefeuille=portefeuille.idportefeuille).all()
+        for liquidite in liquidites:
+            if liquidite.typeliquidite == "ajuster":
+                totalAjustement += float(liquidite.montantliquidite or 0)
+    return {"totalAjustement": round(totalAjustement, 2)}
+
+
 @app.get("/portefeuille/{id}/etat")
 def get_etat_portefeuille(id: int, db: Session = Depends(get_db), user: Utilisateur = Depends(getUtilisateurActuel)):
     portefeuille = db.query(Portefeuille).filter_by(idportefeuille=id).first()
