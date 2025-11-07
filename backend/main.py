@@ -416,7 +416,7 @@ def ajout_action(data: ActionInput, db: Session = Depends(get_db)):
             # on écrase les anciennes valeurs par les nouvelles :
             action_existante.actionvendu = False
             action_existante.quantiteaction = data.quantiteaction
-            action_existante.dateachataction = data.dateachataction
+            action_existante.dateachataction = min(action_existante.dateachataction, data.dateachataction)
             action_existante.prixachataction = data.prixachataction
         else:
             q_old = action_existante.quantiteaction
@@ -430,7 +430,7 @@ def ajout_action(data: ActionInput, db: Session = Depends(get_db)):
             p_moyen = ((p_old*q_old) + (p_new*q_new))/q_total
 
             action_existante.quantiteaction = q_total
-            action_existante.dateachataction = data.dateachataction
+            action_existante.dateachataction = min(action_existante.dateachataction, data.dateachataction)
             action_existante.prixachataction = p_moyen
 
         db.commit()
