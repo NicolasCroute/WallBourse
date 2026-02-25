@@ -12,6 +12,7 @@ from decimal import Decimal
 from ttf import TTF_ISIN_LIST
 from session import utilisateur_connecte_id
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import FileResponse
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 import pandas as pd
@@ -52,6 +53,9 @@ def get_db():
         db.close()
 
 
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse("../frontend/images/logoWallBourse.png")
 
 
 #=============================================
